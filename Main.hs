@@ -67,3 +67,4 @@ main = do
 		liftIO $ putStrLn "after drawing text"
 	pbuf <- pixbufNewFromSurface sur 0 0 width height
 	pixbufSave pbuf "newout.jpg" "jpeg" [("quality", "95")]
+	--Settings.saveSettings Settings.defaultSettings

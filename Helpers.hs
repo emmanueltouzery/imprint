@@ -17,6 +17,7 @@ data CairoColor = CairoColor
 		a :: Double
 	} deriving Generic
 instance FromJSON CairoColor
+instance ToJSON CairoColor
 
 rectWidth (Rectangle _ _ w _) = w
 rectHeight (Rectangle _ _ _ h) = h

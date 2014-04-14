@@ -3,11 +3,13 @@
 module Settings where
 
 import Data.Aeson
+import Data.Aeson.Encode.Pretty (encodePretty)
 import GHC.Generics
 import System.Directory
 import Control.Monad (liftM)
 import Data.Maybe (fromMaybe)
 import qualified Data.ByteString as BS
+import qualified Data.ByteString.Lazy as BL
 
 import Helpers
 
@@ -21,6 +23,7 @@ data Settings = Settings
 		marginYFromWidth :: Double
 	} deriving Generic
 instance FromJSON Settings
+instance ToJSON Settings
 
 defaultSettings = Settings
 	{
@@ -52,3 +55,6 @@ readSettings = do
 	where
 		decodeOrDefault bs = fromMaybe defaultSettings $ decodeStrict bs
 
+saveSettings :: Settings -> IO ()
+saveSettings settings = getConfigFileName >>= flip BL.writeFile json
+	where json = encodePretty settings
