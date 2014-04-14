@@ -35,22 +35,31 @@ main = do
 	text <- layoutEmpty ctxt
 	text `layoutSetText` formattedDate
 	font <- contextGetFontDescription ctxt
-	fontDescriptionSetSize font (pixelToPoints 500)
+	fontDescriptionSetSize font (pixelToPoints $ width `div` 25)
 	contextSetFontDescription ctxt font
+
+	let marginX = width `div` 50
+	let marginY = width `div` 50
+
 	renderWith sur $ do
 
 		setSourcePixbuf img 0 0
 		paint
 
-		moveTo (fromIntegral width / 4) (2.7*fromIntegral height / 4)
+		inkExtents <- liftM snd $ liftIO (layoutGetPixelExtents text)
+		moveTo (fromIntegral $ width - rectWidth inkExtents - marginX)
+			(fromIntegral $ height - rectHeight inkExtents - marginY)
 		layoutPath text
+
 		liftIO $ putStrLn "before drawing text"
 		setSourceRGB 1 0 0
 		fillPreserve
 		setSourceRGB 1 1 0
-		setLineWidth $ (fromIntegral width :: Double) / 300
+		setLineWidth $ (fromIntegral width :: Double) / 500
 		strokePreserve
 		liftIO $ putStrLn "after drawing text"
 	pbuf <- pixbufNewFromSurface sur 0 0 width height
 	pixbufSave pbuf "newout.jpg" "jpeg" [("quality", "95")]
-	--surfaceWriteToPNG sur "k2.png"
+
+rectWidth (Rectangle _ _ w _) = w
+rectHeight (Rectangle _ _ _ h) = h
