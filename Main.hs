@@ -38,8 +38,8 @@ main = do
 	fontDescriptionSetSize font (pixelToPoints $ width `div` 25)
 	contextSetFontDescription ctxt font
 
-	let marginX = width `div` 50
-	let marginY = width `div` 50
+	let marginX = width `div` 40
+	let marginY = width `div` 40
 
 	renderWith sur $ do
 
@@ -52,10 +52,10 @@ main = do
 		layoutPath text
 
 		liftIO $ putStrLn "before drawing text"
-		setSourceRGB 1 0 0
-		fillPreserve
 		setSourceRGB 1 1 0
-		setLineWidth $ (fromIntegral width :: Double) / 500
+		fillPreserve
+		setSourceRGB 1 0.5 0
+		setLineWidth $ (fromIntegral width :: Double) / 600
 		strokePreserve
 		liftIO $ putStrLn "after drawing text"
 	pbuf <- pixbufNewFromSurface sur 0 0 width height
