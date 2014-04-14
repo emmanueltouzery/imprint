@@ -41,11 +41,15 @@ main = do
 
 		setSourcePixbuf img 0 0
 		paint
-		
+
 		moveTo (fromIntegral width / 4) (2.7*fromIntegral height / 4)
+		layoutPath text
 		liftIO $ putStrLn "before drawing text"
+		setSourceRGB 1 0 0
+		fillPreserve
 		setSourceRGB 1 1 0
-		showLayout text
+		setLineWidth $ (fromIntegral width :: Double) / 300
+		strokePreserve
 		liftIO $ putStrLn "after drawing text"
 	pbuf <- pixbufNewFromSurface sur 0 0 width height
 	pixbufSave pbuf "newout.jpg" "jpeg" [("quality", "95")]
