@@ -10,6 +10,8 @@ import System.Locale (defaultTimeLocale)
 import Control.Monad (liftM)
 import Data.Maybe (fromJust)
 
+import qualified Settings
+
 pixelToPoints :: Int -> Double
 pixelToPoints pixels = (fromIntegral pixels :: Double) * 72 / 96
 
@@ -54,7 +56,8 @@ main = do
 		liftIO $ putStrLn "before drawing text"
 		setSourceRGB 1 1 0
 		fillPreserve
-		setSourceRGB 1 0.5 0
+		--setSourceRGB 1 0.5 0
+		setSourceRGBA `applyColor` Settings.getTextStroke
 		setLineWidth $ (fromIntegral width :: Double) / 600
 		strokePreserve
 		liftIO $ putStrLn "after drawing text"
@@ -63,3 +66,6 @@ main = do
 
 rectWidth (Rectangle _ _ w _) = w
 rectHeight (Rectangle _ _ _ h) = h
+
+applyColor :: (Double->Double->Double->Double->a) -> (Double,Double,Double,Double) -> a
+applyColor f (r,g,b,a) = f r g b a
