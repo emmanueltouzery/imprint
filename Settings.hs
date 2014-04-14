@@ -1,19 +1,54 @@
+{-# LANGUAGE DeriveGeneric #-}
+
 module Settings where
 
-getTextSizeFromWidth :: Double
-getTextSizeFromWidth = 0.04
+import Data.Aeson
+import GHC.Generics
+import System.Directory
+import Control.Monad (liftM)
+import Data.Maybe (fromMaybe)
+import qualified Data.ByteString as BS
 
-getTextStroke :: (Double, Double, Double, Double)
-getTextStroke = (1, 0.5, 0, 1)
+import Helpers
 
-getTextStrokeWidthFromWidth :: Double
-getTextStrokeWidthFromWidth = 0.0016667
+data Settings = Settings
+	{
+		textSizeFromWidth :: Double,
+		textStroke :: CairoColor,
+		textStrokeWidthFromWidth :: Double,
+		textFill :: CairoColor,
+		marginXFromWidth :: Double,
+		marginYFromWidth :: Double
+	} deriving Generic
+instance FromJSON Settings
 
-getTextFill :: (Double, Double, Double, Double)
-getTextFill = (1, 1, 0, 1)
+defaultSettings = Settings
+	{
+		textSizeFromWidth = 0.04,
+		textStroke = mkCairoColor 1 0.5 0 1,
+		textStrokeWidthFromWidth = 0.0016667,
+		textFill = mkCairoColor 1 1 0 1,
+		marginXFromWidth = 0.025,
+		marginYFromWidth = 0.025
+	}
 
-getMarginXFromWidth :: Double
-getMarginXFromWidth = 0.025
+getSettingsFolder :: IO FilePath
+getSettingsFolder = do
+	home <- getHomeDirectory
+	let result = home ++ "/.picdate/"
+	createDirectoryIfMissing False result
+	return result
 
-getMarginYFromWidth :: Double
-getMarginYFromWidth = 0.025
+getConfigFileName :: IO String
+getConfigFileName = fmap (++"config.json") getSettingsFolder
+
+readSettings :: IO Settings
+readSettings = do
+	settingsFile <- getConfigFileName
+	isSettings <- doesFileExist settingsFile
+	if isSettings
+		then liftM decodeOrDefault (BS.readFile settingsFile)
+		else return defaultSettings
+	where
+		decodeOrDefault bs = fromMaybe defaultSettings $ decodeStrict bs
+

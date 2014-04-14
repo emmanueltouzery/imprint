@@ -10,6 +10,7 @@ import System.Locale (defaultTimeLocale)
 import Control.Monad (liftM)
 import Data.Maybe (fromJust)
 
+import Helpers
 import qualified Settings
 
 pixelToPoints :: Int -> Double
@@ -17,6 +18,9 @@ pixelToPoints pixels = (fromIntegral pixels :: Double) * 72 / 96
 
 main = do
 	initGUI
+
+	settings <- Settings.readSettings
+
 	let filename = "DSC04293.JPG"
 
 	exifInfo <- parseFileExif filename
@@ -37,12 +41,12 @@ main = do
 	text <- layoutEmpty ctxt
 	text `layoutSetText` formattedDate
 	font <- contextGetFontDescription ctxt
-	let textSizePoints = floor $ fromIntegral width * Settings.getTextSizeFromWidth
+	let textSizePoints = floor $ fromIntegral width * Settings.textSizeFromWidth settings
 	fontDescriptionSetSize font (pixelToPoints $ textSizePoints)
 	contextSetFontDescription ctxt font
 
-	let marginX = floor $ fromIntegral width * Settings.getMarginXFromWidth
-	let marginY = floor $ fromIntegral width * Settings.getMarginYFromWidth
+	let marginX = floor $ fromIntegral width * Settings.marginXFromWidth settings
+	let marginY = floor $ fromIntegral width * Settings.marginYFromWidth settings
 
 	renderWith sur $ do
 
@@ -55,17 +59,11 @@ main = do
 		layoutPath text
 
 		liftIO $ putStrLn "before drawing text"
-		setSourceRGBA `applyColor` Settings.getTextFill
+		setSourceRGBA `applyColor` Settings.textFill settings
 		fillPreserve
-		setSourceRGBA `applyColor` Settings.getTextStroke
-		setLineWidth $ fromIntegral width * Settings.getTextStrokeWidthFromWidth
+		setSourceRGBA `applyColor` Settings.textStroke settings
+		setLineWidth $ fromIntegral width * Settings.textStrokeWidthFromWidth settings
 		strokePreserve
 		liftIO $ putStrLn "after drawing text"
 	pbuf <- pixbufNewFromSurface sur 0 0 width height
 	pixbufSave pbuf "newout.jpg" "jpeg" [("quality", "95")]
-
-rectWidth (Rectangle _ _ w _) = w
-rectHeight (Rectangle _ _ _ h) = h
-
-applyColor :: (Double->Double->Double->Double->a) -> (Double,Double,Double,Double) -> a
-applyColor f (r,g,b,a) = f r g b a
