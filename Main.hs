@@ -37,11 +37,12 @@ main = do
 	text <- layoutEmpty ctxt
 	text `layoutSetText` formattedDate
 	font <- contextGetFontDescription ctxt
-	fontDescriptionSetSize font (pixelToPoints $ width `div` 25)
+	let textSizePoints = floor $ fromIntegral width * Settings.getTextSizeFromWidth
+	fontDescriptionSetSize font (pixelToPoints $ textSizePoints)
 	contextSetFontDescription ctxt font
 
-	let marginX = width `div` 40
-	let marginY = width `div` 40
+	let marginX = floor $ fromIntegral width * Settings.getMarginXFromWidth
+	let marginY = floor $ fromIntegral width * Settings.getMarginYFromWidth
 
 	renderWith sur $ do
 
@@ -54,11 +55,10 @@ main = do
 		layoutPath text
 
 		liftIO $ putStrLn "before drawing text"
-		setSourceRGB 1 1 0
+		setSourceRGBA `applyColor` Settings.getTextFill
 		fillPreserve
-		--setSourceRGB 1 0.5 0
 		setSourceRGBA `applyColor` Settings.getTextStroke
-		setLineWidth $ (fromIntegral width :: Double) / 600
+		setLineWidth $ fromIntegral width * Settings.getTextStrokeWidthFromWidth
 		strokePreserve
 		liftIO $ putStrLn "after drawing text"
 	pbuf <- pixbufNewFromSurface sur 0 0 width height
