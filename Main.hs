@@ -9,9 +9,10 @@ import Data.Time.Format (formatTime)
 import System.Locale (defaultTimeLocale)
 import Control.Monad (liftM)
 import Data.Maybe (fromJust)
+import Data.AppSettings (GetSetting(..))
 
 import Helpers
-import qualified Settings
+import Settings
 
 pixelToPoints :: Int -> Double
 pixelToPoints pixels = (fromIntegral pixels :: Double) * 72 / 96
@@ -19,7 +20,7 @@ pixelToPoints pixels = (fromIntegral pixels :: Double) * 72 / 96
 main = do
 	initGUI
 
-	settings <- Settings.readSettings
+	(settings, GetSetting getSetting) <- Settings.readSettings
 
 	let filename = "DSC04293.JPG"
 
@@ -41,12 +42,12 @@ main = do
 	text <- layoutEmpty ctxt
 	text `layoutSetText` formattedDate
 	font <- contextGetFontDescription ctxt
-	let textSizePoints = floor $ fromIntegral width * Settings.textSizeFromWidth settings
+	let textSizePoints = floor $ fromIntegral width * getSetting textSizeFromWidth
 	fontDescriptionSetSize font (pixelToPoints $ textSizePoints)
 	contextSetFontDescription ctxt font
 
-	let marginX = floor $ fromIntegral width * Settings.marginXFromWidth settings
-	let marginY = floor $ fromIntegral width * Settings.marginYFromWidth settings
+	let marginX = floor $ fromIntegral width * getSetting marginXFromWidth
+	let marginY = floor $ fromIntegral width * getSetting marginYFromWidth
 
 	renderWith sur $ do
 
@@ -59,12 +60,12 @@ main = do
 		layoutPath text
 
 		liftIO $ putStrLn "before drawing text"
-		setSourceRGBA `applyColor` Settings.textFill settings
+		setSourceRGBA `applyColor` getSetting textFill
 		fillPreserve
-		setSourceRGBA `applyColor` Settings.textStroke settings
-		setLineWidth $ fromIntegral width * Settings.textStrokeWidthFromWidth settings
+		setSourceRGBA `applyColor` getSetting textStroke
+		setLineWidth $ fromIntegral width * getSetting strokeWidthFromWidth
 		strokePreserve
 		liftIO $ putStrLn "after drawing text"
 	pbuf <- pixbufNewFromSurface sur 0 0 width height
 	pixbufSave pbuf "newout.jpg" "jpeg" [("quality", "95")]
-	--Settings.saveSettings Settings.defaultSettings
+	Settings.saveSettings settings
