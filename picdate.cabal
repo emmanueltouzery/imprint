@@ -21,12 +21,12 @@ executable picdate
   build-depends:       base,
                        gtk3 >= 0.12.5.7,
                        cairo,
-                       hsexif,
+                       hsexif >= 0.1.0.1 && < 0.2,
                        time == 1.4.*,
                        old-locale == 1.0.*,
                        directory == 1.2.*,
                        containers == 0.5.*,
                        mtl == 2.1.*,
-                       app-settings == 0.1.*
+                       app-settings == 0.2.*
   -- hs-source-dirs:      
   default-language:    Haskell2010

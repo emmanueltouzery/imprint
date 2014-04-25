@@ -1,15 +1,17 @@
+{-# LANGUAGE RankNTypes #-}
 module Main where
 
 import Graphics.UI.Gtk.Gdk.Pixbuf
 import Graphics.Rendering.Cairo
 import Graphics.UI.Gtk
 import Graphics.UI.Gtk.Cairo
+import Graphics.UI.Gtk.Gdk.EventM
 import Graphics.HsExif (parseFileExif, getDateTimeOriginal)
 import Data.Time.Format (formatTime)
 import System.Locale (defaultTimeLocale)
 import Control.Monad (liftM)
 import Data.Maybe (fromJust)
-import Data.AppSettings (GetSetting(..))
+import Data.AppSettings (GetSetting(..), Setting)
 
 import Helpers
 import Settings
@@ -20,7 +22,15 @@ pixelToPoints pixels = (fromIntegral pixels :: Double) * 72 / 96
 main = do
 	initGUI
 
-	(settings, GetSetting getSetting) <- Settings.readSettings
+	-- TODO this must go in a try
+	(settings, getSetting'@(GetSetting getSetting)) <- Settings.readSettings
+
+	builder <- builderNew
+	builderAddFromFile builder "settings.ui"
+
+	dialog <- builderGetObject builder castToDialog "settings_dialog"
+
+	textPreview <- builderGetObject builder castToDrawingArea "textPreview"
 
 	let filename = "DSC04293.JPG"
 
@@ -46,26 +56,39 @@ main = do
 	fontDescriptionSetSize font (pixelToPoints $ textSizePoints)
 	contextSetFontDescription ctxt font
 
-	let marginX = floor $ fromIntegral width * getSetting marginXFromWidth
-	let marginY = floor $ fromIntegral width * getSetting marginYFromWidth
-
 	renderWith sur $ do
-
 		setSourcePixbuf img 0 0
 		paint
+		let marginX = floor $ fromIntegral width * getSetting marginXFromWidth
+		let marginY = floor $ fromIntegral width * getSetting marginYFromWidth
+		(Rectangle _ _ rWidth rHeight) <- liftM snd $ liftIO (layoutGetPixelExtents text)
+		moveTo (fromIntegral $ width - rWidth - marginX)
+			(fromIntegral $ height - rHeight - marginY)
+		renderText text getSetting' width
 
-		inkExtents <- liftM snd $ liftIO (layoutGetPixelExtents text)
-		moveTo (fromIntegral $ width - rectWidth inkExtents - marginX)
-			(fromIntegral $ height - rectHeight inkExtents - marginY)
-		layoutPath text
-
-		liftIO $ putStrLn "before drawing text"
-		setSourceRGBA `applyColor` getSetting textFill
-		fillPreserve
-		setSourceRGBA `applyColor` getSetting textStroke
-		setLineWidth $ fromIntegral width * getSetting strokeWidthFromWidth
-		strokePreserve
-		liftIO $ putStrLn "after drawing text"
 	pbuf <- pixbufNewFromSurface sur 0 0 width height
 	pixbufSave pbuf "newout.jpg" "jpeg" [("quality", "95")]
 	Settings.saveSettings settings
+
+	textPreview `on` draw $ updateTextPreview textPreview text getSetting'
+
+	widgetShowAll dialog
+	mainGUI
+
+renderText :: PangoLayout -> GetSetting -> Int -> Render ()
+renderText text (GetSetting getSetting) width = do
+	layoutPath text
+
+	liftIO $ putStrLn "before drawing text"
+	setSourceRGBA `applyColor` getSetting textFill
+	fillPreserve
+	setSourceRGBA `applyColor` getSetting textStroke
+	setLineWidth $ fromIntegral width * getSetting strokeWidthFromWidth
+	strokePreserve
+	liftIO $ putStrLn "after drawing text"
+
+updateTextPreview :: WidgetClass widget => widget -> PangoLayout -> GetSetting -> Render ()
+updateTextPreview widget text getSetting' = do
+  	width  <- liftIO $ widgetGetAllocatedWidth widget
+
+	renderText text getSetting' width
