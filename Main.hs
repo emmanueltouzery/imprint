@@ -1,4 +1,3 @@
-{-# LANGUAGE RankNTypes #-}
 module Main where
 
 import Graphics.UI.Gtk.Gdk.Pixbuf
@@ -23,7 +22,7 @@ main = do
 	initGUI
 
 	-- TODO this must go in a try
-	(settings, getSetting'@(GetSetting getSetting)) <- Settings.readSettings
+	(settings, GetSetting getSetting) <- Settings.readSettings
 
 	builder <- builderNew
 	builderAddFromFile builder "settings.ui"
@@ -64,13 +63,13 @@ main = do
 		(Rectangle _ _ rWidth rHeight) <- liftM snd $ liftIO (layoutGetPixelExtents text)
 		moveTo (fromIntegral $ width - rWidth - marginX)
 			(fromIntegral $ height - rHeight - marginY)
-		renderText text getSetting' width
+		renderText text (GetSetting getSetting) width
 
 	pbuf <- pixbufNewFromSurface sur 0 0 width height
 	pixbufSave pbuf "newout.jpg" "jpeg" [("quality", "95")]
 	Settings.saveSettings settings
 
-	textPreview `on` draw $ updateTextPreview textPreview text getSetting'
+	textPreview `on` draw $ updateTextPreview textPreview text $ GetSetting getSetting
 
 	widgetShowAll dialog
 	mainGUI
@@ -90,5 +89,4 @@ renderText text (GetSetting getSetting) width = do
 updateTextPreview :: WidgetClass widget => widget -> PangoLayout -> GetSetting -> Render ()
 updateTextPreview widget text getSetting' = do
   	width  <- liftIO $ widgetGetAllocatedWidth widget
-
 	renderText text getSetting' width
