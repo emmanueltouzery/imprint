@@ -30,6 +30,8 @@ main = do
 	dialog <- builderGetObject builder castToDialog "settings_dialog"
 
 	textPreview <- builderGetObject builder castToDrawingArea "textPreview"
+	fillColor <- builderGetObject builder castToColorButton "fillColor"
+	buttonSetColor fillColor $ getSetting textFill
 
 	let filename = "DSC04293.JPG"
 
