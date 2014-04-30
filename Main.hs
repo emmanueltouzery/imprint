@@ -10,7 +10,7 @@ import Data.Time.Format (formatTime)
 import System.Locale (defaultTimeLocale)
 import Control.Monad (liftM)
 import Data.Maybe (fromJust)
-import Data.AppSettings (GetSetting(..), Setting)
+import Data.AppSettings (GetSetting(..), Setting, setSetting)
 
 import Helpers
 import Settings
@@ -32,6 +32,7 @@ main = do
 	textPreview <- builderGetObject builder castToDrawingArea "textPreview"
 	fillColor <- builderGetObject builder castToColorButton "fillColor"
 	buttonSetColor fillColor $ getSetting textFill
+	onColorSet fillColor $ colorChanged fillColor textFill
 
 	let filename = "DSC04293.JPG"
 
@@ -75,6 +76,15 @@ main = do
 
 	widgetShowAll dialog
 	mainGUI
+
+colorChanged :: ColorButton -> Setting (Double, Double, Double, Double) -> IO ()
+colorChanged btn setting = do
+	putStrLn "color changed"
+	gtkColor <- colorButtonGetColor btn
+	alpha <- colorButtonGetAlpha btn
+	conf <- liftM fst Settings.readSettings
+	let conf' = setSetting conf setting $ readGtkColorAlpha gtkColor alpha
+	saveSettings conf'
 
 renderText :: PangoLayout -> GetSetting -> Int -> Render ()
 renderText text (GetSetting getSetting) width = do
