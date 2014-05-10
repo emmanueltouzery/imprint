@@ -10,7 +10,7 @@ import Data.Time.Format (formatTime)
 import System.Locale (defaultTimeLocale)
 import Control.Monad (liftM)
 import Data.Maybe (fromJust)
-import Data.AppSettings (GetSetting(..), Setting, setSetting)
+import Data.AppSettings (GetSetting(..), Conf, Setting, setSetting)
 
 import Helpers
 import Settings
@@ -30,9 +30,9 @@ main = do
 	dialog <- builderGetObject builder castToDialog "settings_dialog"
 
 	textPreview <- builderGetObject builder castToDrawingArea "textPreview"
-	fillColor <- builderGetObject builder castToColorButton "fillColor"
-	buttonSetColor fillColor $ getSetting textFill
-	onColorSet fillColor $ colorChanged fillColor textFill
+
+	tieColor builder "fillColor" settings (GetSetting getSetting) textFill
+	tieColor builder "strokeColor" settings (GetSetting getSetting) textStroke
 
 	let filename = "DSC04293.JPG"
 
@@ -77,12 +77,19 @@ main = do
 	widgetShowAll dialog
 	mainGUI
 
-colorChanged :: ColorButton -> Setting (Double, Double, Double, Double) -> IO ()
-colorChanged btn setting = do
+
+tieColor :: Builder -> String -> Conf -> GetSetting -> Setting (Double, Double, Double, Double) -> IO ()
+tieColor builder buttonName conf (GetSetting getSetting) colorSetting = do
+	colorBtn <- builderGetObject builder castToColorButton buttonName
+	buttonSetColor colorBtn $ getSetting colorSetting
+	onColorSet colorBtn $ colorChanged conf colorBtn colorSetting
+	return ()
+
+colorChanged :: Conf -> ColorButton -> Setting (Double, Double, Double, Double) -> IO ()
+colorChanged conf btn setting = do
 	putStrLn "color changed"
 	gtkColor <- colorButtonGetColor btn
 	alpha <- colorButtonGetAlpha btn
-	conf <- liftM fst Settings.readSettings
 	let conf' = setSetting conf setting $ readGtkColorAlpha gtkColor alpha
 	saveSettings conf'
 
