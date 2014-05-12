@@ -10,7 +10,8 @@ import Data.Time.Format (formatTime)
 import System.Locale (defaultTimeLocale)
 import Control.Monad (liftM)
 import Data.Maybe (fromJust)
-import Data.AppSettings (GetSetting(..), Conf, Setting, setSetting)
+import Data.AppSettings (GetSetting(..), getSetting', Conf, Setting, setSetting)
+import Data.IORef
 
 import Helpers
 import Settings
@@ -22,7 +23,13 @@ main = do
 	initGUI
 
 	-- TODO this must go in a try
+	-- This is the settings dialog.
+	-- Therefore it's a special situation because
+	-- the settings can change anytime.
+	-- in the rest of the app however they'll be static.
 	(settings, GetSetting getSetting) <- Settings.readSettings
+
+	latestConfig <- newIORef settings
 
 	builder <- builderNew
 	builderAddFromFile builder "settings.ui"
@@ -30,9 +37,6 @@ main = do
 	dialog <- builderGetObject builder castToDialog "settings_dialog"
 
 	textPreview <- builderGetObject builder castToDrawingArea "textPreview"
-
-	tieColor builder "fillColor" settings (GetSetting getSetting) textFill
-	tieColor builder "strokeColor" settings (GetSetting getSetting) textStroke
 
 	let filename = "DSC04293.JPG"
 
@@ -72,26 +76,31 @@ main = do
 	pixbufSave pbuf "newout.jpg" "jpeg" [("quality", "95")]
 	Settings.saveSettings settings
 
-	textPreview `on` draw $ updateTextPreview textPreview text $ GetSetting getSetting
+	textPreview `on` draw $ updateTextPreview textPreview text latestConfig
+
+	tieColor builder "fillColor" latestConfig textFill
+	tieColor builder "strokeColor" latestConfig textStroke
 
 	widgetShowAll dialog
 	mainGUI
 
-
-tieColor :: Builder -> String -> Conf -> GetSetting -> Setting (Double, Double, Double, Double) -> IO ()
-tieColor builder buttonName conf (GetSetting getSetting) colorSetting = do
+tieColor :: Builder -> String -> IORef Conf -> Setting (Double, Double, Double, Double) -> IO ()
+tieColor builder buttonName latestConfig colorSetting = do
 	colorBtn <- builderGetObject builder castToColorButton buttonName
-	buttonSetColor colorBtn $ getSetting colorSetting
-	onColorSet colorBtn $ colorChanged conf colorBtn colorSetting
+	conf <- readIORef latestConfig
+	buttonSetColor colorBtn $ getSetting' conf colorSetting
+	onColorSet colorBtn $ colorChanged latestConfig colorBtn colorSetting
 	return ()
 
-colorChanged :: Conf -> ColorButton -> Setting (Double, Double, Double, Double) -> IO ()
-colorChanged conf btn setting = do
+colorChanged :: IORef Conf -> ColorButton -> Setting (Double, Double, Double, Double) -> IO ()
+colorChanged latestConfig btn setting = do
 	putStrLn "color changed"
 	gtkColor <- colorButtonGetColor btn
 	alpha <- colorButtonGetAlpha btn
+	conf <- readIORef latestConfig
 	let conf' = setSetting conf setting $ readGtkColorAlpha gtkColor alpha
 	saveSettings conf'
+	writeIORef latestConfig conf'
 
 renderText :: PangoLayout -> GetSetting -> Int -> Render ()
 renderText text (GetSetting getSetting) width = do
@@ -105,7 +114,8 @@ renderText text (GetSetting getSetting) width = do
 	strokePreserve
 	liftIO $ putStrLn "after drawing text"
 
-updateTextPreview :: WidgetClass widget => widget -> PangoLayout -> GetSetting -> Render ()
-updateTextPreview widget text getSetting' = do
+updateTextPreview :: WidgetClass widget => widget -> PangoLayout -> IORef Conf -> Render ()
+updateTextPreview widget text latestConfig = do
+	conf <- liftIO $ readIORef latestConfig
   	width  <- liftIO $ widgetGetAllocatedWidth widget
-	renderText text getSetting' width
+	renderText text (GetSetting $ getSetting' conf) width
