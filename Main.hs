@@ -80,6 +80,16 @@ main = do
 
 	tieColor builder "fillColor" latestConfig textFill
 	tieColor builder "strokeColor" latestConfig textStroke
+	borderScale <- builderGetObject builder castToScale "borderScale"
+	borderAdjustment <- adjustmentNew (getSetting strokeHeightRatio*100) 0 11 1 1 1
+	rangeSetAdjustment borderScale borderAdjustment
+	onValueChanged borderAdjustment $ do
+		conf <- readIORef latestConfig
+		newRatio <- liftM (/100) $ adjustmentGetValue borderAdjustment
+		let conf' = setSetting conf strokeHeightRatio newRatio
+		saveSettings conf'
+		writeIORef latestConfig conf'
+		widgetQueueDraw textPreview
 
 	widgetShowAll dialog
 	mainGUI
@@ -106,13 +116,12 @@ renderText :: PangoLayout -> GetSetting -> Int -> Render ()
 renderText text (GetSetting getSetting) width = do
 	layoutPath text
 
-	liftIO $ putStrLn "before drawing text"
 	setSourceRGBA `applyColor` getSetting textFill
 	fillPreserve
 	setSourceRGBA `applyColor` getSetting textStroke
-	setLineWidth $ fromIntegral width * getSetting strokeWidthFromWidth
+	(Rectangle _ _ _ rHeight) <- liftM snd $ liftIO (layoutGetPixelExtents text)
+	setLineWidth $ fromIntegral rHeight * getSetting strokeHeightRatio
 	strokePreserve
-	liftIO $ putStrLn "after drawing text"
 
 updateTextPreview :: WidgetClass widget => widget -> PangoLayout -> IORef Conf -> Render ()
 updateTextPreview widget text latestConfig = do

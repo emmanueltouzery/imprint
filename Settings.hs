@@ -17,8 +17,8 @@ textSizeFromWidth = Setting "textSizeFromWidth" 0.04
 textStroke :: Setting (Double,Double,Double,Double)
 textStroke = Setting "textStroke" (1, 0.5, 0, 1)
 
-strokeWidthFromWidth :: Setting Double
-strokeWidthFromWidth = Setting "textStrokeWidthFromWidth" 0.0016667
+strokeHeightRatio :: Setting Double
+strokeHeightRatio = Setting "strokeHeightRatio" 0.05
 
 textFill :: Setting (Double,Double,Double,Double)
 textFill = Setting "textFill" (1, 1, 0, 1)
@@ -33,7 +33,7 @@ getAllSettings :: DefaultConfig
 getAllSettings = getDefaultConfig $ do
 	setting textSizeFromWidth
 	setting textStroke
-	setting strokeWidthFromWidth
+	setting strokeHeightRatio
 	setting textFill
 	setting marginXFromWidth
 	setting marginYFromWidth

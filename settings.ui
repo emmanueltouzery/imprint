@@ -102,7 +102,7 @@
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkScale" id="scale1">
+                      <object class="GtkScale" id="borderScale">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="round_digits">1</property>
