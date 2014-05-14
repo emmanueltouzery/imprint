@@ -84,15 +84,19 @@ main = do
 	borderAdjustment <- adjustmentNew (getSetting strokeHeightRatio*100) 0 11 1 1 1
 	rangeSetAdjustment borderScale borderAdjustment
 	onValueChanged borderAdjustment $ do
-		conf <- readIORef latestConfig
 		newRatio <- liftM (/100) $ adjustmentGetValue borderAdjustment
-		let conf' = setSetting conf strokeHeightRatio newRatio
-		saveSettings conf'
-		writeIORef latestConfig conf'
+		updateConfig latestConfig $ \conf -> setSetting conf strokeHeightRatio newRatio
 		widgetQueueDraw textPreview
 
 	widgetShowAll dialog
 	mainGUI
+
+updateConfig :: IORef Conf -> (Conf -> Conf) -> IO ()
+updateConfig latestConfig newConfigMaker = do
+	conf <- readIORef latestConfig
+	let conf' = newConfigMaker conf
+	saveSettings conf'
+	writeIORef latestConfig conf'
 
 tieColor :: Builder -> String -> IORef Conf -> Setting (Double, Double, Double, Double) -> IO ()
 tieColor builder buttonName latestConfig colorSetting = do
@@ -107,10 +111,7 @@ colorChanged latestConfig btn setting = do
 	putStrLn "color changed"
 	gtkColor <- colorButtonGetColor btn
 	alpha <- colorButtonGetAlpha btn
-	conf <- readIORef latestConfig
-	let conf' = setSetting conf setting $ readGtkColorAlpha gtkColor alpha
-	saveSettings conf'
-	writeIORef latestConfig conf'
+	updateConfig latestConfig $ \conf -> setSetting conf setting $ readGtkColorAlpha gtkColor alpha
 
 renderText :: PangoLayout -> GetSetting -> Int -> Render ()
 renderText text (GetSetting getSetting) width = do
