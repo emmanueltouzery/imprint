@@ -21,7 +21,7 @@ executable picdate
   build-depends:       base,
                        gtk3 >= 0.12.5.7,
                        cairo,
-                       hsexif >= 0.4.0.1 && < 0.5,
+                       hsexif == 0.5.*,
                        time == 1.4.*,
                        old-locale == 1.0.*,
                        directory == 1.2.*,
