@@ -8,8 +8,8 @@ import Graphics.UI.Gtk.Gdk.EventM
 import Graphics.HsExif (parseFileExif, getDateTimeOriginal)
 import Data.Time.Format (formatTime)
 import System.Locale (defaultTimeLocale)
-import Control.Monad (liftM)
-import Data.Maybe (fromJust)
+import Control.Monad (liftM, when)
+import Data.Maybe (fromJust, isJust)
 import Data.AppSettings (GetSetting(..), getSetting', Conf, Setting, setSetting)
 import Data.IORef
 
@@ -57,10 +57,7 @@ main = do
 	ctxt <- cairoCreateContext Nothing
 	text <- layoutEmpty ctxt
 	text `layoutSetText` formattedDate
-	font <- contextGetFontDescription ctxt
-	let textSizePoints = floor $ fromIntegral width * getSetting textSizeFromWidth
-	fontDescriptionSetSize font (pixelToPoints $ textSizePoints)
-	contextSetFontDescription ctxt font
+	updateFontFromSettings ctxt width latestConfig
 
 	renderWith sur $ do
 		setSourcePixbuf img 0 0
@@ -88,8 +85,29 @@ main = do
 		updateConfig latestConfig $ \conf -> setSetting conf strokeHeightRatio newRatio
 		widgetQueueDraw textPreview
 
+	fontButton <- builderGetObject builder castToFontButton "fontButton"
+	when (isJust $ getSetting fontName) $ do
+		fontButtonSetFontName fontButton $ fromJust $ getSetting fontName
+		return ()
+		
+	onFontSet fontButton $ do
+		selectedFontName <- fontButtonGetFontName fontButton
+		updateConfig latestConfig $ \conf -> setSetting conf fontName $ Just selectedFontName
+		updateFontFromSettings ctxt width latestConfig
+
 	widgetShowAll dialog
 	mainGUI
+
+updateFontFromSettings :: PangoContext -> Int -> IORef Conf -> IO ()
+updateFontFromSettings ctxt width latestConfig = do
+	conf <- readIORef latestConfig
+	font <- case getSetting' conf fontName of
+		Nothing -> contextGetFontDescription ctxt
+		Just name -> liftIO $ fontDescriptionFromString name
+	let textSizePoints = floor $ fromIntegral width * getSetting' conf textSizeFromWidth
+	fontDescriptionSetSize font (pixelToPoints textSizePoints)
+	--liftIO $ layoutSetFontDescription text (Just fontDesc)
+	contextSetFontDescription ctxt font
 
 updateConfig :: IORef Conf -> (Conf -> Conf) -> IO ()
 updateConfig latestConfig newConfigMaker = do

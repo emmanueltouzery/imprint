@@ -29,6 +29,9 @@ marginXFromWidth = Setting "marginXFromWidth" 0.025
 marginYFromWidth :: Setting Double
 marginYFromWidth = Setting "marginYFromWidth" 0.025
 
+fontName :: Setting (Maybe String)
+fontName = Setting "fontName" Nothing
+
 getAllSettings :: DefaultConfig
 getAllSettings = getDefaultConfig $ do
 	setting textSizeFromWidth
@@ -37,6 +40,7 @@ getAllSettings = getDefaultConfig $ do
 	setting textFill
 	setting marginXFromWidth
 	setting marginYFromWidth
+	setting fontName
 
 readSettings :: IO (Conf, GetSetting)
 readSettings = AppSettings.readSettings (AutoFromAppName appName)
