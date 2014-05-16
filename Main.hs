@@ -16,6 +16,9 @@ import Data.IORef
 import Helpers
 import Settings
 
+minFontSize :: Int
+minFontSize = 5
+
 pixelToPoints :: Int -> Double
 pixelToPoints pixels = (fromIntegral pixels :: Double) * 72 / 96
 
@@ -59,6 +62,9 @@ main = do
 	text `layoutSetText` formattedDate
 	updateFontFromSettings ctxt width latestConfig
 
+	let textSizePoints = fromIntegral width * getSetting textSizeFromWidth
+	contextSetFontSize ctxt textSizePoints
+
 	renderWith sur $ do
 		setSourcePixbuf img 0 0
 		paint
@@ -74,6 +80,11 @@ main = do
 	Settings.saveSettings settings
 
 	textPreview `on` draw $ updateTextPreview textPreview text latestConfig
+
+	textPreview `on` configureEvent $ do
+		-- widget resize
+		liftIO $ setFontSizeForWidget ctxt text textPreview
+		return True
 
 	tieColor builder "fillColor" latestConfig textFill
 	tieColor builder "strokeColor" latestConfig textStroke
@@ -94,9 +105,30 @@ main = do
 		selectedFontName <- fontButtonGetFontName fontButton
 		updateConfig latestConfig $ \conf -> setSetting conf fontName $ Just selectedFontName
 		updateFontFromSettings ctxt width latestConfig
+		setFontSizeForWidget ctxt text textPreview
 
 	widgetShowAll dialog
 	mainGUI
+
+contextSetFontSize :: PangoContext -> Double -> IO ()
+contextSetFontSize ctxt fontSize = do
+	font <- contextGetFontDescription ctxt
+	fontDescriptionSetSize font fontSize
+	contextSetFontDescription ctxt font
+
+setFontSizeForWidget :: WidgetClass a => PangoContext -> PangoLayout -> a -> IO ()
+setFontSizeForWidget ctxt text widget = liftIO $ do
+	w <- widgetGetAllocatedWidth widget
+	h <- widgetGetAllocatedHeight widget
+	setFontSizeForBoundingBox ctxt text minFontSize w h
+
+setFontSizeForBoundingBox :: PangoContext -> PangoLayout -> Int -> Int -> Int -> IO ()
+setFontSizeForBoundingBox ctxt text fontSize maxWidth maxHeight = do
+	contextSetFontSize ctxt $ fromIntegral fontSize
+	(Rectangle _ _ rWidth rHeight) <- liftM snd $ layoutGetPixelExtents text
+	if rWidth < maxWidth && rHeight < maxHeight
+		then setFontSizeForBoundingBox ctxt text (fontSize+1) maxWidth maxHeight
+		else contextSetFontSize ctxt $ fromIntegral $ fontSize-1
 
 updateFontFromSettings :: PangoContext -> Int -> IORef Conf -> IO ()
 updateFontFromSettings ctxt width latestConfig = do
@@ -104,8 +136,6 @@ updateFontFromSettings ctxt width latestConfig = do
 	font <- case getSetting' conf fontName of
 		Nothing -> contextGetFontDescription ctxt
 		Just name -> liftIO $ fontDescriptionFromString name
-	let textSizePoints = floor $ fromIntegral width * getSetting' conf textSizeFromWidth
-	fontDescriptionSetSize font (pixelToPoints textSizePoints)
 	--liftIO $ layoutSetFontDescription text (Just fontDesc)
 	contextSetFontDescription ctxt font
 
