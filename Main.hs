@@ -1,3 +1,5 @@
+{-# LANGUAGE RankNTypes #-}
+
 module Main where
 
 import Graphics.UI.Gtk.Gdk.Pixbuf
@@ -12,6 +14,7 @@ import Control.Monad (liftM, when)
 import Data.Maybe (fromJust, isJust)
 import Data.AppSettings (GetSetting(..), getSetting', Conf, Setting, setSetting)
 import Data.IORef
+import Control.Lens hiding (Setting, setting)
 
 import Helpers
 import Settings
@@ -36,10 +39,6 @@ main = do
 
 	builder <- builderNew
 	builderAddFromFile builder "settings.ui"
-
-	dialog <- builderGetObject builder castToDialog "settings_dialog"
-
-	textPreview <- builderGetObject builder castToDrawingArea "textPreview"
 
 	let filename = "DSC04293.JPG"
 
@@ -79,6 +78,19 @@ main = do
 	pixbufSave pbuf "newout.jpg" "jpeg" [("quality", "95")]
 	Settings.saveSettings settings
 
+	showTextStyleDialog builder (GetSetting getSetting) latestConfig
+	mainGUI
+
+showTextStyleDialog :: Builder -> GetSetting -> IORef Conf -> IO ()
+showTextStyleDialog builder (GetSetting getSetting) latestConfig = do
+
+	ctxt <- cairoCreateContext Nothing
+	text <- layoutEmpty ctxt
+	text `layoutSetText` "2014-04-01"
+
+	dialog <- builderGetObject builder castToDialog "settings_dialog"
+	textPreview <- builderGetObject builder castToDrawingArea "textPreview"
+
 	textPreview `on` draw $ updateTextPreview textPreview text latestConfig
 
 	textPreview `on` configureEvent $ do
@@ -86,29 +98,31 @@ main = do
 		liftIO $ setFontSizeForWidget ctxt text textPreview
 		return True
 
-	tieColor builder "fillColor" latestConfig textFill
-	tieColor builder "strokeColor" latestConfig textStroke
+	let initialTextStyle = getSetting selectedTextStyle
+
+	tieColor builder "fillColor" latestConfig textFillL
+	tieColor builder "strokeColor" latestConfig textStrokeL
 	borderScale <- builderGetObject builder castToScale "borderScale"
-	borderAdjustment <- adjustmentNew (getSetting strokeHeightRatio*100) 0 11 1 1 1
+	borderAdjustment <- adjustmentNew (strokeHeightRatio initialTextStyle *100) 0 11 1 1 1
 	rangeSetAdjustment borderScale borderAdjustment
 	onValueChanged borderAdjustment $ do
 		newRatio <- liftM (/100) $ adjustmentGetValue borderAdjustment
-		updateConfig latestConfig $ \conf -> setSetting conf strokeHeightRatio newRatio
+		updateConfigSetting latestConfig selectedTextStyle (strokeHeightRatioL .~ newRatio)
 		widgetQueueDraw textPreview
 
 	fontButton <- builderGetObject builder castToFontButton "fontButton"
-	when (isJust $ getSetting fontName) $ do
-		fontButtonSetFontName fontButton $ fromJust $ getSetting fontName
+	when (isJust $ fontName initialTextStyle) $ do
+		fontButtonSetFontName fontButton $ fromJust $ fontName initialTextStyle
 		return ()
 		
 	onFontSet fontButton $ do
 		selectedFontName <- fontButtonGetFontName fontButton
-		updateConfig latestConfig $ \conf -> setSetting conf fontName $ Just selectedFontName
-		updateFontFromSettings ctxt width latestConfig
+		updateConfigSetting latestConfig selectedTextStyle (fontNameL .~ Just selectedFontName)
+		w <- widgetGetAllocatedWidth textPreview
+		updateFontFromSettings ctxt w latestConfig
 		setFontSizeForWidget ctxt text textPreview
 
 	widgetShowAll dialog
-	mainGUI
 
 contextSetFontSize :: PangoContext -> Double -> IO ()
 contextSetFontSize ctxt fontSize = do
@@ -133,11 +147,15 @@ setFontSizeForBoundingBox ctxt text fontSize maxWidth maxHeight = do
 updateFontFromSettings :: PangoContext -> Int -> IORef Conf -> IO ()
 updateFontFromSettings ctxt width latestConfig = do
 	conf <- readIORef latestConfig
-	font <- case getSetting' conf fontName of
+	font <- case fontName $ getSetting' conf selectedTextStyle of
 		Nothing -> contextGetFontDescription ctxt
 		Just name -> liftIO $ fontDescriptionFromString name
 	--liftIO $ layoutSetFontDescription text (Just fontDesc)
 	contextSetFontDescription ctxt font
+
+updateConfigSetting :: (Read a, Show a) => IORef Conf -> Setting a -> (a->a) -> IO ()
+updateConfigSetting latestConfig setting settingUpdater = updateConfig latestConfig $
+	\conf -> setSetting conf setting $ settingUpdater $ getSetting' conf setting
 
 updateConfig :: IORef Conf -> (Conf -> Conf) -> IO ()
 updateConfig latestConfig newConfigMaker = do
@@ -146,30 +164,31 @@ updateConfig latestConfig newConfigMaker = do
 	saveSettings conf'
 	writeIORef latestConfig conf'
 
-tieColor :: Builder -> String -> IORef Conf -> Setting (Double, Double, Double, Double) -> IO ()
-tieColor builder buttonName latestConfig colorSetting = do
+tieColor :: Builder -> String -> IORef Conf -> (Lens' TextStyle ColorRgba) -> IO ()
+tieColor builder buttonName latestConfig colorL = do
 	colorBtn <- builderGetObject builder castToColorButton buttonName
 	conf <- readIORef latestConfig
-	buttonSetColor colorBtn $ getSetting' conf colorSetting
-	onColorSet colorBtn $ colorChanged latestConfig colorBtn colorSetting
+	let textStyle = getSetting' conf selectedTextStyle
+	buttonSetColor colorBtn $ textStyle ^. colorL
+	onColorSet colorBtn $ colorChanged latestConfig colorBtn colorL
 	return ()
 
-colorChanged :: IORef Conf -> ColorButton -> Setting (Double, Double, Double, Double) -> IO ()
-colorChanged latestConfig btn setting = do
+colorChanged :: IORef Conf -> ColorButton -> (Lens' TextStyle ColorRgba) -> IO ()
+colorChanged latestConfig btn colorL = do
 	putStrLn "color changed"
 	gtkColor <- colorButtonGetColor btn
 	alpha <- colorButtonGetAlpha btn
-	updateConfig latestConfig $ \conf -> setSetting conf setting $ readGtkColorAlpha gtkColor alpha
+	updateConfigSetting latestConfig selectedTextStyle (colorL .~ readGtkColorAlpha gtkColor alpha)
 
 renderText :: PangoLayout -> GetSetting -> Int -> Render ()
 renderText text (GetSetting getSetting) width = do
 	layoutPath text
-
-	setSourceRGBA `applyColor` getSetting textFill
+	let textStyle = getSetting selectedTextStyle
+	setSourceRGBA `applyColor` textFill textStyle
 	fillPreserve
-	setSourceRGBA `applyColor` getSetting textStroke
+	setSourceRGBA `applyColor` textStroke textStyle
 	(Rectangle _ _ _ rHeight) <- liftM snd $ liftIO (layoutGetPixelExtents text)
-	setLineWidth $ fromIntegral rHeight * getSetting strokeHeightRatio
+	setLineWidth $ fromIntegral rHeight * strokeHeightRatio textStyle
 	strokePreserve
 
 updateTextPreview :: WidgetClass widget => widget -> PangoLayout -> IORef Conf -> Render ()
