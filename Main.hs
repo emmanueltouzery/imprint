@@ -35,6 +35,10 @@ main = do
 	-- in the rest of the app however they'll be static.
 	(settings, GetSetting getSetting) <- Settings.readSettings
 
+	-- ############ TODO I think i don't need to hold the config in an IORef
+	-- now. I want realtime edit when previewing changes in the OK/Cancel dialog.
+	-- But the rest of the time I'll in fact reload. So I think I can limit the
+	-- IORef to the scope of the OK/Cancel preview dialog.
 	latestConfig <- newIORef settings
 
 	builder <- builderNew
@@ -59,7 +63,7 @@ main = do
 	ctxt <- cairoCreateContext Nothing
 	text <- layoutEmpty ctxt
 	text `layoutSetText` formattedDate
-	updateFontFromSettings ctxt width latestConfig
+	updateFontFromTextStyle ctxt width $ getSetting selectedTextStyle
 
 	let textSizePoints = fromIntegral width * getSetting textSizeFromWidth
 	contextSetFontSize ctxt textSizePoints
@@ -79,7 +83,6 @@ main = do
 	Settings.saveSettings settings
 
 	showTextStyleListDialog builder latestConfig
-	showTextStyleDialog builder (GetSetting getSetting) latestConfig
 	mainGUI
 
 showTextStyleListDialog :: Builder -> IORef Conf -> IO ()
@@ -90,9 +93,14 @@ showTextStyleListDialog builder latestConfig = do
 	conf <- readIORef latestConfig
 	let styles = getSetting' conf textStyles
 	ctxt <- cairoCreateContext Nothing
-	mapM_ (vboxAddStyleDrawable stylesVbox ctxt) styles
+	
+	let editCallbacks = fmap (updateStyle latestConfig stylesVbox) [0..]
+	mapM_ (uncurry $ vboxAddStyleItem builder stylesVbox ctxt) $ zip styles editCallbacks
 	windowSetDefaultSize dialog 600 400
 	widgetShowAll dialog
+
+updateStyle :: IORef Conf -> Box -> Int -> TextStyle -> IO ()
+updateStyle latestConfig stylesVbox styleIdx newStyle = putStrLn "update style!"
 
 prepareTextStyleDrawingArea :: PangoContext -> PangoLayout -> DrawingArea -> IO ()
 prepareTextStyleDrawingArea ctxt text drawingArea = do
@@ -102,8 +110,10 @@ prepareTextStyleDrawingArea ctxt text drawingArea = do
 		return True
 	return ()
 
-vboxAddStyleDrawable :: Box -> PangoContext -> TextStyle -> IO ()
-vboxAddStyleDrawable box ctxt textStyle = do
+-- Maybe could use Gtk signals for the styleUpdatedCallback,
+-- but don't know how/whether it's possible.
+vboxAddStyleItem :: Builder -> Box -> PangoContext -> TextStyle -> (TextStyle -> IO ()) -> IO ()
+vboxAddStyleItem builder box ctxt textStyle styleUpdatedCallback = do
 	text <- layoutEmpty ctxt
 	text `layoutSetText` "2014-04-01"
 
@@ -118,7 +128,10 @@ vboxAddStyleDrawable box ctxt textStyle = do
 	boxPackStart hbox drawingArea PackNatural 0
 	vbtnBox <- vButtonBoxNew
 	prepareButton stockCopy >>= containerAdd vbtnBox
-	prepareButton stockEdit >>= containerAdd vbtnBox
+	editBtn <- prepareButton stockEdit
+	editBtn `on` buttonActivated $ do
+		showTextStyleDialog builder textStyle styleUpdatedCallback
+ 	containerAdd vbtnBox editBtn
 	prepareButton stockDelete >>= containerAdd vbtnBox
 	boxPackStart hbox vbtnBox PackNatural 0
 
@@ -133,45 +146,51 @@ prepareButton stockId = do
 	buttonSetRelief btn ReliefNone
 	return btn
 
-showTextStyleDialog :: Builder -> GetSetting -> IORef Conf -> IO ()
-showTextStyleDialog builder (GetSetting getSetting) latestConfig = do
-
+showTextStyleDialog :: Builder -> TextStyle -> (TextStyle -> IO()) -> IO ()
+showTextStyleDialog builder textStyle updateCallback = do
 	ctxt <- cairoCreateContext Nothing
 	text <- layoutEmpty ctxt
 	text `layoutSetText` "2014-04-01"
+
+	curTextStyle <- newIORef textStyle
 
 	dialog <- builderGetObject builder castToDialog "settings_dialog"
 	textPreview <- builderGetObject builder castToDrawingArea "textPreview"
 
 	prepareTextStyleDrawingArea ctxt text textPreview
 	textPreview `on` draw $ do
-		conf <- liftIO $ readIORef latestConfig
-		let textStyle = getSetting' conf selectedTextStyle
+		textStyle <- liftIO $ readIORef curTextStyle
 		updateTextPreview textPreview text textStyle
 
-	let initialTextStyle = getSetting selectedTextStyle
-
-	tieColor builder "fillColor" latestConfig textFillL
-	tieColor builder "strokeColor" latestConfig textStrokeL
+	tieColor builder "fillColor" curTextStyle textFillL
+	tieColor builder "strokeColor" curTextStyle textStrokeL
 	borderScale <- builderGetObject builder castToScale "borderScale"
-	borderAdjustment <- adjustmentNew (strokeHeightRatio initialTextStyle *100) 0 11 1 1 1
+	borderAdjustment <- adjustmentNew (strokeHeightRatio textStyle *100) 0 11 1 1 1
 	rangeSetAdjustment borderScale borderAdjustment
 	onValueChanged borderAdjustment $ do
 		newRatio <- liftM (/100) $ adjustmentGetValue borderAdjustment
-		updateConfigSetting latestConfig selectedTextStyle (strokeHeightRatioL .~ newRatio)
+		modifyIORef curTextStyle (strokeHeightRatioL .~ newRatio)
 		widgetQueueDraw textPreview
 
 	fontButton <- builderGetObject builder castToFontButton "fontButton"
-	when (isJust $ fontName initialTextStyle) $ do
-		fontButtonSetFontName fontButton $ fromJust $ fontName initialTextStyle
+	when (isJust $ fontName textStyle) $ do
+		fontButtonSetFontName fontButton $ fromJust $ fontName textStyle
 		return ()
 		
 	onFontSet fontButton $ do
 		selectedFontName <- fontButtonGetFontName fontButton
-		updateConfigSetting latestConfig selectedTextStyle (fontNameL .~ Just selectedFontName)
+		modifyIORef curTextStyle (fontNameL .~ Just selectedFontName)
 		w <- widgetGetAllocatedWidth textPreview
-		updateFontFromSettings ctxt w latestConfig
+		readIORef curTextStyle >>= updateFontFromTextStyle ctxt w 
 		setFontSizeForWidget ctxt text textPreview
+
+	textStyleBtnCancel <- builderGetObject builder castToButton "textStyleBtnCancel"
+	textStyleBtnCancel `on` buttonActivated $ widgetHide dialog
+
+	textStyleBtnOk <- builderGetObject builder castToButton "textStyleBtnOk"
+	textStyleBtnOk `on` buttonActivated $ do
+		readIORef curTextStyle >>= updateCallback
+		widgetHide dialog
 
 	widgetShowAll dialog
 
@@ -195,18 +214,13 @@ setFontSizeForBoundingBox ctxt text fontSize maxWidth maxHeight = do
 		then setFontSizeForBoundingBox ctxt text (fontSize+1) maxWidth maxHeight
 		else contextSetFontSize ctxt $ fromIntegral $ fontSize-1
 
-updateFontFromSettings :: PangoContext -> Int -> IORef Conf -> IO ()
-updateFontFromSettings ctxt width latestConfig = do
-	conf <- readIORef latestConfig
-	font <- case fontName $ getSetting' conf selectedTextStyle of
+updateFontFromTextStyle :: PangoContext -> Int -> TextStyle -> IO ()
+updateFontFromTextStyle ctxt width textStyle = do
+	font <- case fontName textStyle of
 		Nothing -> contextGetFontDescription ctxt
 		Just name -> liftIO $ fontDescriptionFromString name
 	--liftIO $ layoutSetFontDescription text (Just fontDesc)
 	contextSetFontDescription ctxt font
-
-updateConfigSetting :: (Read a, Show a) => IORef Conf -> Setting a -> (a->a) -> IO ()
-updateConfigSetting latestConfig setting settingUpdater = updateConfig latestConfig $
-	\conf -> setSetting conf setting $ settingUpdater $ getSetting' conf setting
 
 updateConfig :: IORef Conf -> (Conf -> Conf) -> IO ()
 updateConfig latestConfig newConfigMaker = do
@@ -215,21 +229,20 @@ updateConfig latestConfig newConfigMaker = do
 	saveSettings conf'
 	writeIORef latestConfig conf'
 
-tieColor :: Builder -> String -> IORef Conf -> (Lens' TextStyle ColorRgba) -> IO ()
-tieColor builder buttonName latestConfig colorL = do
+tieColor :: Builder -> String -> IORef TextStyle -> (Lens' TextStyle ColorRgba) -> IO ()
+tieColor builder buttonName curTextStyle colorL = do
 	colorBtn <- builderGetObject builder castToColorButton buttonName
-	conf <- readIORef latestConfig
-	let textStyle = getSetting' conf selectedTextStyle
+	textStyle <- readIORef curTextStyle
 	buttonSetColor colorBtn $ textStyle ^. colorL
-	onColorSet colorBtn $ colorChanged latestConfig colorBtn colorL
+	onColorSet colorBtn $ colorChanged curTextStyle colorBtn colorL
 	return ()
 
-colorChanged :: IORef Conf -> ColorButton -> (Lens' TextStyle ColorRgba) -> IO ()
-colorChanged latestConfig btn colorL = do
+colorChanged :: IORef TextStyle -> ColorButton -> (Lens' TextStyle ColorRgba) -> IO ()
+colorChanged curTextStyle btn colorL = do
 	putStrLn "color changed"
 	gtkColor <- colorButtonGetColor btn
 	alpha <- colorButtonGetAlpha btn
-	updateConfigSetting latestConfig selectedTextStyle (colorL .~ readGtkColorAlpha gtkColor alpha)
+	modifyIORef curTextStyle (colorL .~ readGtkColorAlpha gtkColor alpha)
 
 renderText :: PangoLayout -> TextStyle -> Int -> Render ()
 renderText text textStyle width = do
