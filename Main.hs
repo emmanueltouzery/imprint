@@ -1,18 +1,17 @@
 {-# LANGUAGE RankNTypes #-}
+{-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 
 module Main where
 
 import Graphics.UI.Gtk.Gdk.Pixbuf
 import Graphics.Rendering.Cairo
 import Graphics.UI.Gtk
-import Graphics.UI.Gtk.Cairo
-import Graphics.UI.Gtk.Gdk.EventM
 import Graphics.HsExif (parseFileExif, getDateTimeOriginal)
 import Data.Time.Format (formatTime)
 import System.Locale (defaultTimeLocale)
 import Control.Monad (liftM, when)
 import Data.Maybe (fromJust, isJust)
-import Data.AppSettings (GetSetting(..), getSetting', Conf, Setting, setSetting)
+import Data.AppSettings (GetSetting(..), getSetting', Conf)
 import Data.IORef
 import Control.Lens hiding (Setting, setting)
 
@@ -25,6 +24,7 @@ minFontSize = 5
 pixelToPoints :: Int -> Double
 pixelToPoints pixels = (fromIntegral pixels :: Double) * 72 / 96
 
+main :: IO ()
 main = do
 	initGUI
 
@@ -65,7 +65,7 @@ main = do
 	ctxt <- cairoCreateContext Nothing
 	text <- layoutEmpty ctxt
 	text `layoutSetText` formattedDate
-	updateFontFromTextStyle ctxt width $ getSetting selectedTextStyle
+	updateFontFromTextStyle ctxt $ getSetting selectedTextStyle
 
 	let textSizePoints = fromIntegral width * getSetting textSizeFromWidth
 	contextSetFontSize ctxt textSizePoints
@@ -78,7 +78,7 @@ main = do
 		(Rectangle _ _ rWidth rHeight) <- liftM snd $ liftIO (layoutGetPixelExtents text)
 		moveTo (fromIntegral $ width - rWidth - marginX)
 			(fromIntegral $ height - rHeight - marginY)
-		renderText text (getSetting selectedTextStyle) width
+		renderText text (getSetting selectedTextStyle)
 
 	pbuf <- pixbufNewFromSurface sur 0 0 width height
 	pixbufSave pbuf "newout.jpg" "jpeg" [("quality", "95")]
@@ -97,7 +97,7 @@ showTextStyleListDialog builder latestConfig textStyleDialogInfo = do
 	ctxt <- cairoCreateContext Nothing
 	
 	let editCallbacks = fmap (updateStyle latestConfig stylesVbox) [0..]
-	mapM_ (uncurry $ vboxAddStyleItem builder stylesVbox ctxt textStyleDialogInfo) $ zip styles editCallbacks
+	mapM_ (uncurry $ vboxAddStyleItem stylesVbox ctxt textStyleDialogInfo) $ zip styles editCallbacks
 	windowSetDefaultSize dialog 600 400
 	widgetShowAll dialog
 
@@ -114,8 +114,8 @@ prepareTextStyleDrawingArea ctxt text drawingArea = do
 
 -- Maybe could use Gtk signals for the styleUpdatedCallback,
 -- but don't know how/whether it's possible.
-vboxAddStyleItem :: Builder -> Box -> PangoContext -> TextStyleDialogInfo -> TextStyle -> (TextStyle -> IO ()) -> IO ()
-vboxAddStyleItem builder box ctxt textStyleDialogInfo textStyle styleUpdatedCallback = do
+vboxAddStyleItem :: Box -> PangoContext -> TextStyleDialogInfo -> TextStyle -> (TextStyle -> IO ()) -> IO ()
+vboxAddStyleItem box ctxt textStyleDialogInfo textStyle styleUpdatedCallback = do
 	text <- layoutEmpty ctxt
 	text `layoutSetText` "2014-04-01"
 
@@ -123,7 +123,7 @@ vboxAddStyleItem builder box ctxt textStyleDialogInfo textStyle styleUpdatedCall
 	widgetSetSizeRequest drawingArea 400 100
 
 	prepareTextStyleDrawingArea ctxt text drawingArea
-	drawingArea `on` draw $ updateTextPreview drawingArea text textStyle
+	drawingArea `on` draw $ renderText text textStyle
 
 	-- TODO move to GTK/glade widget templates
 	hbox <- hBoxNew False 0
@@ -164,7 +164,7 @@ prepareTextStyleDialog builder textStyle = do
 	prepareTextStyleDrawingArea ctxt text textPreview
 	textPreview `on` draw $ do
 		textStyle <- liftIO $ readIORef curTextStyle
-		updateTextPreview textPreview text textStyle
+		renderText text textStyle
 
 	tieColor dialog builder "fillColor" curTextStyle textFillL
 	tieColor dialog builder "strokeColor" curTextStyle textStrokeL
@@ -191,8 +191,7 @@ prepareTextStyleDialog builder textStyle = do
 	onFontSet fontButton $ do
 		selectedFontName <- fontButtonGetFontName fontButton
 		modifyIORef curTextStyle (fontNameL .~ Just selectedFontName)
-		w <- widgetGetAllocatedWidth textPreview
-		readIORef curTextStyle >>= updateFontFromTextStyle ctxt w 
+		readIORef curTextStyle >>= updateFontFromTextStyle ctxt
 		setFontSizeForWidget ctxt text textPreview
 
 	textStyleBtnCancel <- builderGetObject builder castToButton "textStyleBtnCancel"
@@ -236,8 +235,8 @@ setFontSizeForBoundingBox ctxt text fontSize maxWidth maxHeight = do
 		then setFontSizeForBoundingBox ctxt text (fontSize+1) maxWidth maxHeight
 		else contextSetFontSize ctxt $ fromIntegral $ fontSize-1
 
-updateFontFromTextStyle :: PangoContext -> Int -> TextStyle -> IO ()
-updateFontFromTextStyle ctxt width textStyle = do
+updateFontFromTextStyle :: PangoContext -> TextStyle -> IO ()
+updateFontFromTextStyle ctxt textStyle = do
 	font <- case fontName textStyle of
 		Nothing -> contextGetFontDescription ctxt
 		Just name -> liftIO $ fontDescriptionFromString name
@@ -268,8 +267,8 @@ colorChanged curTextStyle btn colorL = do
 	alpha <- colorButtonGetAlpha btn
 	modifyIORef curTextStyle (colorL .~ readGtkColorAlpha gtkColor alpha)
 
-renderText :: PangoLayout -> TextStyle -> Int -> Render ()
-renderText text textStyle width = do
+renderText :: PangoLayout -> TextStyle -> Render ()
+renderText text textStyle = do
 	layoutPath text
 	setSourceRGBA `applyColor` textFill textStyle
 	fillPreserve
@@ -277,8 +276,3 @@ renderText text textStyle width = do
 	(Rectangle _ _ _ rHeight) <- liftM snd $ liftIO (layoutGetPixelExtents text)
 	setLineWidth $ fromIntegral rHeight * strokeHeightRatio textStyle
 	strokePreserve
-
-updateTextPreview :: WidgetClass widget => widget -> PangoLayout -> TextStyle -> Render ()
-updateTextPreview widget text textStyle = do
-  	width  <- liftIO $ widgetGetAllocatedWidth widget
-	renderText text textStyle width

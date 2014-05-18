@@ -2,15 +2,8 @@
 
 module Settings where
 
-import Data.Maybe (fromMaybe)
-import System.Directory
-import Control.Monad (liftM)
-import Data.Map as M
-import Control.Monad
-import Control.Monad.State
 import Data.AppSettings as AppSettings
 import Control.Lens hiding (Setting, setting)
-import Control.Lens.TH
 
 appName :: String
 appName = "picdate"
