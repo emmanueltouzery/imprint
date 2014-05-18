@@ -44,6 +44,8 @@ main = do
 	builder <- builderNew
 	builderAddFromFile builder "imprint.ui"
 
+	textStyleDialogInfo <- prepareTextStyleDialog builder (getSetting selectedTextStyle)
+
 	let filename = "DSC04293.JPG"
 
 	exifInfo <- parseFileExif filename
@@ -82,11 +84,11 @@ main = do
 	pixbufSave pbuf "newout.jpg" "jpeg" [("quality", "95")]
 	Settings.saveSettings settings
 
-	showTextStyleListDialog builder latestConfig
+	showTextStyleListDialog builder latestConfig textStyleDialogInfo
 	mainGUI
 
-showTextStyleListDialog :: Builder -> IORef Conf -> IO ()
-showTextStyleListDialog builder latestConfig = do
+showTextStyleListDialog :: Builder -> IORef Conf -> TextStyleDialogInfo -> IO ()
+showTextStyleListDialog builder latestConfig textStyleDialogInfo = do
 	dialog <- builderGetObject builder castToWindow "window1"
 	stylesVbox <- builderGetObject builder castToBox "stylesVbox"
 	containerForeach stylesVbox (\w -> containerRemove stylesVbox w)
@@ -95,7 +97,7 @@ showTextStyleListDialog builder latestConfig = do
 	ctxt <- cairoCreateContext Nothing
 	
 	let editCallbacks = fmap (updateStyle latestConfig stylesVbox) [0..]
-	mapM_ (uncurry $ vboxAddStyleItem builder stylesVbox ctxt) $ zip styles editCallbacks
+	mapM_ (uncurry $ vboxAddStyleItem builder stylesVbox ctxt textStyleDialogInfo) $ zip styles editCallbacks
 	windowSetDefaultSize dialog 600 400
 	widgetShowAll dialog
 
@@ -112,8 +114,8 @@ prepareTextStyleDrawingArea ctxt text drawingArea = do
 
 -- Maybe could use Gtk signals for the styleUpdatedCallback,
 -- but don't know how/whether it's possible.
-vboxAddStyleItem :: Builder -> Box -> PangoContext -> TextStyle -> (TextStyle -> IO ()) -> IO ()
-vboxAddStyleItem builder box ctxt textStyle styleUpdatedCallback = do
+vboxAddStyleItem :: Builder -> Box -> PangoContext -> TextStyleDialogInfo -> TextStyle -> (TextStyle -> IO ()) -> IO ()
+vboxAddStyleItem builder box ctxt textStyleDialogInfo textStyle styleUpdatedCallback = do
 	text <- layoutEmpty ctxt
 	text `layoutSetText` "2014-04-01"
 
@@ -130,7 +132,7 @@ vboxAddStyleItem builder box ctxt textStyle styleUpdatedCallback = do
 	prepareButton stockCopy >>= containerAdd vbtnBox
 	editBtn <- prepareButton stockEdit
 	editBtn `on` buttonActivated $ do
-		showTextStyleDialog builder textStyle styleUpdatedCallback
+		showTextStyleDialog textStyleDialogInfo textStyle styleUpdatedCallback
  	containerAdd vbtnBox editBtn
 	prepareButton stockDelete >>= containerAdd vbtnBox
 	boxPackStart hbox vbtnBox PackNatural 0
@@ -146,8 +148,10 @@ prepareButton stockId = do
 	buttonSetRelief btn ReliefNone
 	return btn
 
-showTextStyleDialog :: Builder -> TextStyle -> (TextStyle -> IO()) -> IO ()
-showTextStyleDialog builder textStyle updateCallback = do
+data TextStyleDialogInfo = TextStyleDialogInfo (IORef TextStyle) Button Dialog (IORef (Maybe (ConnectId Button)))
+
+prepareTextStyleDialog :: Builder -> TextStyle -> IO TextStyleDialogInfo
+prepareTextStyleDialog builder textStyle = do
 	ctxt <- cairoCreateContext Nothing
 	text <- layoutEmpty ctxt
 	text `layoutSetText` "2014-04-01"
@@ -162,20 +166,27 @@ showTextStyleDialog builder textStyle updateCallback = do
 		textStyle <- liftIO $ readIORef curTextStyle
 		updateTextPreview textPreview text textStyle
 
-	tieColor builder "fillColor" curTextStyle textFillL
-	tieColor builder "strokeColor" curTextStyle textStrokeL
+	tieColor dialog builder "fillColor" curTextStyle textFillL
+	tieColor dialog builder "strokeColor" curTextStyle textStrokeL
 	borderScale <- builderGetObject builder castToScale "borderScale"
 	borderAdjustment <- adjustmentNew (strokeHeightRatio textStyle *100) 0 11 1 1 1
 	rangeSetAdjustment borderScale borderAdjustment
+	dialog `on` mapEvent $ liftIO $ do
+		textStyle <- readIORef curTextStyle
+		adjustmentSetValue borderAdjustment (strokeHeightRatio textStyle *100)
+		return False
 	onValueChanged borderAdjustment $ do
 		newRatio <- liftM (/100) $ adjustmentGetValue borderAdjustment
 		modifyIORef curTextStyle (strokeHeightRatioL .~ newRatio)
 		widgetQueueDraw textPreview
 
 	fontButton <- builderGetObject builder castToFontButton "fontButton"
-	when (isJust $ fontName textStyle) $ do
-		fontButtonSetFontName fontButton $ fromJust $ fontName textStyle
-		return ()
+	dialog `on` mapEvent $ liftIO $ do
+		textStyle <- readIORef curTextStyle
+		fontButtonSetFontName fontButton $ if (isJust $ fontName textStyle)
+			then fromJust $ fontName textStyle
+			else ""
+		return False
 		
 	onFontSet fontButton $ do
 		selectedFontName <- fontButtonGetFontName fontButton
@@ -188,10 +199,21 @@ showTextStyleDialog builder textStyle updateCallback = do
 	textStyleBtnCancel `on` buttonActivated $ widgetHide dialog
 
 	textStyleBtnOk <- builderGetObject builder castToButton "textStyleBtnOk"
-	textStyleBtnOk `on` buttonActivated $ do
+
+	okSignalRef <- newIORef Nothing
+
+	return $ TextStyleDialogInfo curTextStyle textStyleBtnOk dialog okSignalRef
+
+showTextStyleDialog :: TextStyleDialogInfo -> TextStyle -> (TextStyle -> IO ()) -> IO ()
+showTextStyleDialog (TextStyleDialogInfo curTextStyle textStyleBtnOk dialog okSigRef) textStyle updateCallback = do
+	writeIORef curTextStyle textStyle
+	okSig <- readIORef okSigRef
+	when (isJust okSig) $ signalDisconnect $ fromJust okSig
+	newOkSig <- textStyleBtnOk `on` buttonActivated $ do
 		readIORef curTextStyle >>= updateCallback
 		widgetHide dialog
-
+	writeIORef okSigRef (Just newOkSig)
+	
 	widgetShowAll dialog
 
 contextSetFontSize :: PangoContext -> Double -> IO ()
@@ -229,11 +251,13 @@ updateConfig latestConfig newConfigMaker = do
 	saveSettings conf'
 	writeIORef latestConfig conf'
 
-tieColor :: Builder -> String -> IORef TextStyle -> (Lens' TextStyle ColorRgba) -> IO ()
-tieColor builder buttonName curTextStyle colorL = do
+tieColor :: Dialog -> Builder -> String -> IORef TextStyle -> (Lens' TextStyle ColorRgba) -> IO ()
+tieColor dialog builder buttonName curTextStyle colorL = do
 	colorBtn <- builderGetObject builder castToColorButton buttonName
-	textStyle <- readIORef curTextStyle
-	buttonSetColor colorBtn $ textStyle ^. colorL
+	dialog `on` mapEvent $ liftIO $ do
+		textStyle <- readIORef curTextStyle
+		buttonSetColor colorBtn $ textStyle ^. colorL
+		return False
 	onColorSet colorBtn $ colorChanged curTextStyle colorBtn colorL
 	return ()
 
