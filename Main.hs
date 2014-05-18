@@ -4,7 +4,7 @@
 module Main where
 
 import Graphics.UI.Gtk.Gdk.Pixbuf
-import Graphics.Rendering.Cairo
+import Graphics.Rendering.Cairo hiding (width, height)
 import Graphics.UI.Gtk
 import Graphics.HsExif (parseFileExif, getDateTimeOriginal)
 import Data.Time.Format (formatTime)
@@ -163,8 +163,8 @@ prepareTextStyleDialog builder textStyle = do
 
 	prepareTextStyleDrawingArea ctxt text textPreview
 	textPreview `on` draw $ do
-		textStyle <- liftIO $ readIORef curTextStyle
-		renderText text textStyle
+		cTextStyle <- liftIO $ readIORef curTextStyle
+		renderText text cTextStyle
 
 	tieColor dialog builder "fillColor" curTextStyle textFillL
 	tieColor dialog builder "strokeColor" curTextStyle textStrokeL
@@ -172,8 +172,8 @@ prepareTextStyleDialog builder textStyle = do
 	borderAdjustment <- adjustmentNew (strokeHeightRatio textStyle *100) 0 11 1 1 1
 	rangeSetAdjustment borderScale borderAdjustment
 	dialog `on` mapEvent $ liftIO $ do
-		textStyle <- readIORef curTextStyle
-		adjustmentSetValue borderAdjustment (strokeHeightRatio textStyle *100)
+		cTextStyle <- readIORef curTextStyle
+		adjustmentSetValue borderAdjustment (strokeHeightRatio cTextStyle *100)
 		return False
 	onValueChanged borderAdjustment $ do
 		newRatio <- liftM (/100) $ adjustmentGetValue borderAdjustment
@@ -182,9 +182,9 @@ prepareTextStyleDialog builder textStyle = do
 
 	fontButton <- builderGetObject builder castToFontButton "fontButton"
 	dialog `on` mapEvent $ liftIO $ do
-		textStyle <- readIORef curTextStyle
-		fontButtonSetFontName fontButton $ if (isJust $ fontName textStyle)
-			then fromJust $ fontName textStyle
+		cTextStyle <- readIORef curTextStyle
+		fontButtonSetFontName fontButton $ if (isJust $ fontName cTextStyle)
+			then fromJust $ fontName cTextStyle
 			else ""
 		return False
 		
