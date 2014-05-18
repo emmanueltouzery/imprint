@@ -38,14 +38,14 @@ textStyles = ListSetting "textStyles" $ [
 		fontName = Nothing
 	},
 	TextStyle {
-		textStroke = (1, 0.5, 0, 1),
-		textFill = (1, 1, 0, 1),
-		strokeHeightRatio = 0.04,
+		textStroke = (0, 0, 0, 1),
+		textFill = (1, 1, 1, 1),
+		strokeHeightRatio = 0.010,
 		fontName = Nothing
 	},
 	TextStyle {
-		textStroke = (1, 0.5, 0, 1),
-		textFill = (1, 1, 0, 1),
+		textStroke = (1, 1, 1, 1),
+		textFill = (0, 0, 0, 1),
 		strokeHeightRatio = 0.04,
 		fontName = Nothing
 	}

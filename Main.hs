@@ -94,31 +94,24 @@ showTextStyleListDialog builder latestConfig = do
 	windowSetDefaultSize dialog 600 400
 	widgetShowAll dialog
 
-prepareTextStyleDrawingArea :: IORef Conf -> PangoContext -> PangoLayout -> DrawingArea -> IO ()
-prepareTextStyleDrawingArea latestConfig ctxt text drawingArea = do
+prepareTextStyleDrawingArea :: PangoContext -> PangoLayout -> DrawingArea -> IO ()
+prepareTextStyleDrawingArea ctxt text drawingArea = do
 	drawingArea `on` configureEvent $ do
 		-- widget resize
 		liftIO $ setFontSizeForWidget ctxt text drawingArea
 		return True
-
-	drawingArea `on` draw $ updateTextPreview drawingArea text latestConfig
 	return ()
 
 vboxAddStyleDrawable :: Box -> PangoContext -> TextStyle -> IO ()
 vboxAddStyleDrawable box ctxt textStyle = do
-	-- ### NEXT TWO LINES JUST FOR TESTING ###
-	-- WITH THIS CODE I'LL ALWAYS DISPLAY THE CURRENT STYLE,
-	-- FOR ALL THE ITEMS IN THE LIST!
-	(settings, GetSetting getSetting) <- Settings.readSettings
-	latestConfig <- newIORef settings
-
 	text <- layoutEmpty ctxt
 	text `layoutSetText` "2014-04-01"
 
 	drawingArea <- drawingAreaNew
 	widgetSetSizeRequest drawingArea (-1) 100
 
-	prepareTextStyleDrawingArea latestConfig ctxt text drawingArea
+	prepareTextStyleDrawingArea ctxt text drawingArea
+	drawingArea `on` draw $ updateTextPreview drawingArea text textStyle
 	boxPackStart box drawingArea PackNatural 0
 	widgetShowAll drawingArea
 
@@ -132,7 +125,11 @@ showTextStyleDialog builder (GetSetting getSetting) latestConfig = do
 	dialog <- builderGetObject builder castToDialog "settings_dialog"
 	textPreview <- builderGetObject builder castToDrawingArea "textPreview"
 
-	prepareTextStyleDrawingArea latestConfig ctxt text textPreview
+	prepareTextStyleDrawingArea ctxt text textPreview
+	textPreview `on` draw $ do
+		conf <- liftIO $ readIORef latestConfig
+		let textStyle = getSetting' conf selectedTextStyle
+		updateTextPreview textPreview text textStyle
 
 	let initialTextStyle = getSetting selectedTextStyle
 
@@ -226,8 +223,7 @@ renderText text textStyle width = do
 	setLineWidth $ fromIntegral rHeight * strokeHeightRatio textStyle
 	strokePreserve
 
-updateTextPreview :: WidgetClass widget => widget -> PangoLayout -> IORef Conf -> Render ()
-updateTextPreview widget text latestConfig = do
-	conf <- liftIO $ readIORef latestConfig
+updateTextPreview :: WidgetClass widget => widget -> PangoLayout -> TextStyle -> Render ()
+updateTextPreview widget text textStyle = do
   	width  <- liftIO $ widgetGetAllocatedWidth widget
-	renderText text (getSetting' conf selectedTextStyle) width
+	renderText text textStyle width
