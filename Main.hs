@@ -38,7 +38,7 @@ main = do
 	latestConfig <- newIORef settings
 
 	builder <- builderNew
-	builderAddFromFile builder "settings.ui"
+	builderAddFromFile builder "imprint.ui"
 
 	let filename = "DSC04293.JPG"
 
@@ -72,14 +72,55 @@ main = do
 		(Rectangle _ _ rWidth rHeight) <- liftM snd $ liftIO (layoutGetPixelExtents text)
 		moveTo (fromIntegral $ width - rWidth - marginX)
 			(fromIntegral $ height - rHeight - marginY)
-		renderText text (GetSetting getSetting) width
+		renderText text (getSetting selectedTextStyle) width
 
 	pbuf <- pixbufNewFromSurface sur 0 0 width height
 	pixbufSave pbuf "newout.jpg" "jpeg" [("quality", "95")]
 	Settings.saveSettings settings
 
+	showTextStyleListDialog builder latestConfig
 	showTextStyleDialog builder (GetSetting getSetting) latestConfig
 	mainGUI
+
+showTextStyleListDialog :: Builder -> IORef Conf -> IO ()
+showTextStyleListDialog builder latestConfig = do
+	dialog <- builderGetObject builder castToWindow "window1"
+	stylesVbox <- builderGetObject builder castToBox "stylesVbox"
+	containerForeach stylesVbox (\w -> containerRemove stylesVbox w)
+	conf <- readIORef latestConfig
+	let styles = getSetting' conf textStyles
+	ctxt <- cairoCreateContext Nothing
+	mapM_ (vboxAddStyleDrawable stylesVbox ctxt) styles
+	windowSetDefaultSize dialog 600 400
+	widgetShowAll dialog
+
+prepareTextStyleDrawingArea :: IORef Conf -> PangoContext -> PangoLayout -> DrawingArea -> IO ()
+prepareTextStyleDrawingArea latestConfig ctxt text drawingArea = do
+	drawingArea `on` configureEvent $ do
+		-- widget resize
+		liftIO $ setFontSizeForWidget ctxt text drawingArea
+		return True
+
+	drawingArea `on` draw $ updateTextPreview drawingArea text latestConfig
+	return ()
+
+vboxAddStyleDrawable :: Box -> PangoContext -> TextStyle -> IO ()
+vboxAddStyleDrawable box ctxt textStyle = do
+	-- ### NEXT TWO LINES JUST FOR TESTING ###
+	-- WITH THIS CODE I'LL ALWAYS DISPLAY THE CURRENT STYLE,
+	-- FOR ALL THE ITEMS IN THE LIST!
+	(settings, GetSetting getSetting) <- Settings.readSettings
+	latestConfig <- newIORef settings
+
+	text <- layoutEmpty ctxt
+	text `layoutSetText` "2014-04-01"
+
+	drawingArea <- drawingAreaNew
+	widgetSetSizeRequest drawingArea (-1) 100
+
+	prepareTextStyleDrawingArea latestConfig ctxt text drawingArea
+	boxPackStart box drawingArea PackNatural 0
+	widgetShowAll drawingArea
 
 showTextStyleDialog :: Builder -> GetSetting -> IORef Conf -> IO ()
 showTextStyleDialog builder (GetSetting getSetting) latestConfig = do
@@ -91,12 +132,7 @@ showTextStyleDialog builder (GetSetting getSetting) latestConfig = do
 	dialog <- builderGetObject builder castToDialog "settings_dialog"
 	textPreview <- builderGetObject builder castToDrawingArea "textPreview"
 
-	textPreview `on` draw $ updateTextPreview textPreview text latestConfig
-
-	textPreview `on` configureEvent $ do
-		-- widget resize
-		liftIO $ setFontSizeForWidget ctxt text textPreview
-		return True
+	prepareTextStyleDrawingArea latestConfig ctxt text textPreview
 
 	let initialTextStyle = getSetting selectedTextStyle
 
@@ -180,10 +216,9 @@ colorChanged latestConfig btn colorL = do
 	alpha <- colorButtonGetAlpha btn
 	updateConfigSetting latestConfig selectedTextStyle (colorL .~ readGtkColorAlpha gtkColor alpha)
 
-renderText :: PangoLayout -> GetSetting -> Int -> Render ()
-renderText text (GetSetting getSetting) width = do
+renderText :: PangoLayout -> TextStyle -> Int -> Render ()
+renderText text textStyle width = do
 	layoutPath text
-	let textStyle = getSetting selectedTextStyle
 	setSourceRGBA `applyColor` textFill textStyle
 	fillPreserve
 	setSourceRGBA `applyColor` textStroke textStyle
@@ -195,4 +230,4 @@ updateTextPreview :: WidgetClass widget => widget -> PangoLayout -> IORef Conf -
 updateTextPreview widget text latestConfig = do
 	conf <- liftIO $ readIORef latestConfig
   	width  <- liftIO $ widgetGetAllocatedWidth widget
-	renderText text (GetSetting $ getSetting' conf) width
+	renderText text (getSetting' conf selectedTextStyle) width

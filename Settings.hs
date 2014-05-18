@@ -29,14 +29,27 @@ makeLensesWith ?? ''TextStyle $ lensRules
   & lensField .~ (\name -> Just (name ++ "L"))
 
 
---textStyles :: Setting [TextStyle]
---textStyles = ListSetting "textStyles" $ [TextStyle
---	{
---		textStroke = (1, 0.5, 0, 1),
---		textFill = (1, 1, 0, 1),
---		strokeHeightRatio = 0.04,
---		fontName = Nothing
---	}]
+textStyles :: Setting [TextStyle]
+textStyles = ListSetting "textStyles" $ [
+	TextStyle {
+		textStroke = (1, 0.5, 0, 1),
+		textFill = (1, 1, 0, 1),
+		strokeHeightRatio = 0.04,
+		fontName = Nothing
+	},
+	TextStyle {
+		textStroke = (1, 0.5, 0, 1),
+		textFill = (1, 1, 0, 1),
+		strokeHeightRatio = 0.04,
+		fontName = Nothing
+	},
+	TextStyle {
+		textStroke = (1, 0.5, 0, 1),
+		textFill = (1, 1, 0, 1),
+		strokeHeightRatio = 0.04,
+		fontName = Nothing
+	}
+	]
 
 selectedTextStyle :: Setting TextStyle
 selectedTextStyle = Setting "textStyle" $ TextStyle
@@ -59,6 +72,7 @@ marginYFromWidth = Setting "marginYFromWidth" 0.025
 getAllSettings :: DefaultConfig
 getAllSettings = getDefaultConfig $ do
 	setting selectedTextStyle
+	setting textStyles
 	setting textSizeFromWidth
 	setting marginXFromWidth
 	setting marginYFromWidth
