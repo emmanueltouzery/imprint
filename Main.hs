@@ -13,7 +13,7 @@ import Control.Monad (liftM, when)
 import Data.Maybe (fromJust, isJust)
 import Data.AppSettings (GetSetting(..), getSetting', Conf)
 import Data.IORef
-import Control.Lens hiding (Setting, setting)
+import Control.Lens hiding (Setting, setting, set)
 
 import Helpers
 import Settings
@@ -97,8 +97,8 @@ showTextStyleListDialog builder latestConfig textStyleDialogInfo = do
 	ctxt <- cairoCreateContext Nothing
 	
 	let editCallbacks = fmap (updateStyle latestConfig stylesVbox) [0..]
-	mapM_ (uncurry $ vboxAddStyleItem stylesVbox ctxt textStyleDialogInfo) $ zip styles editCallbacks
-	windowSetDefaultSize dialog 600 400
+	mapM_ (uncurry $ vboxAddStyleItem dialog stylesVbox ctxt textStyleDialogInfo) $ zip styles editCallbacks
+	windowSetDefaultSize dialog 600 500
 	widgetShowAll dialog
 
 updateStyle :: IORef Conf -> Box -> Int -> TextStyle -> IO ()
@@ -114,13 +114,13 @@ prepareTextStyleDrawingArea ctxt text drawingArea = do
 
 -- Maybe could use Gtk signals for the styleUpdatedCallback,
 -- but don't know how/whether it's possible.
-vboxAddStyleItem :: Box -> PangoContext -> TextStyleDialogInfo -> TextStyle -> (TextStyle -> IO ()) -> IO ()
-vboxAddStyleItem box ctxt textStyleDialogInfo textStyle styleUpdatedCallback = do
+vboxAddStyleItem :: Window -> Box -> PangoContext -> TextStyleDialogInfo -> TextStyle -> (TextStyle -> IO ()) -> IO ()
+vboxAddStyleItem parent box ctxt textStyleDialogInfo textStyle styleUpdatedCallback = do
 	text <- layoutEmpty ctxt
 	text `layoutSetText` "2014-04-01"
 
 	drawingArea <- drawingAreaNew
-	widgetSetSizeRequest drawingArea 400 100
+	widgetSetSizeRequest drawingArea 500 100
 
 	prepareTextStyleDrawingArea ctxt text drawingArea
 	drawingArea `on` draw $ renderText text textStyle
@@ -132,7 +132,7 @@ vboxAddStyleItem box ctxt textStyleDialogInfo textStyle styleUpdatedCallback = d
 	prepareButton stockCopy >>= containerAdd vbtnBox
 	editBtn <- prepareButton stockEdit
 	editBtn `on` buttonActivated $ do
-		showTextStyleDialog textStyleDialogInfo textStyle styleUpdatedCallback
+		showTextStyleDialog parent textStyleDialogInfo textStyle styleUpdatedCallback
  	containerAdd vbtnBox editBtn
 	prepareButton stockDelete >>= containerAdd vbtnBox
 	boxPackStart hbox vbtnBox PackNatural 0
@@ -203,8 +203,8 @@ prepareTextStyleDialog builder textStyle = do
 
 	return $ TextStyleDialogInfo curTextStyle textStyleBtnOk dialog okSignalRef
 
-showTextStyleDialog :: TextStyleDialogInfo -> TextStyle -> (TextStyle -> IO ()) -> IO ()
-showTextStyleDialog (TextStyleDialogInfo curTextStyle textStyleBtnOk dialog okSigRef) textStyle updateCallback = do
+showTextStyleDialog :: Window -> TextStyleDialogInfo -> TextStyle -> (TextStyle -> IO ()) -> IO ()
+showTextStyleDialog parent (TextStyleDialogInfo curTextStyle textStyleBtnOk dialog okSigRef) textStyle updateCallback = do
 	writeIORef curTextStyle textStyle
 	okSig <- readIORef okSigRef
 	when (isJust okSig) $ signalDisconnect $ fromJust okSig
@@ -213,7 +213,10 @@ showTextStyleDialog (TextStyleDialogInfo curTextStyle textStyleBtnOk dialog okSi
 		widgetHide dialog
 	writeIORef okSigRef (Just newOkSig)
 	
-	widgetShowAll dialog
+	windowSetDefaultSize dialog 450 400
+	set dialog [windowTransientFor := parent]
+	dialogRun dialog
+	return ()
 
 contextSetFontSize :: PangoContext -> Double -> IO ()
 contextSetFontSize ctxt fontSize = do
