@@ -108,12 +108,30 @@ vboxAddStyleDrawable box ctxt textStyle = do
 	text `layoutSetText` "2014-04-01"
 
 	drawingArea <- drawingAreaNew
-	widgetSetSizeRequest drawingArea (-1) 100
+	widgetSetSizeRequest drawingArea 400 100
 
 	prepareTextStyleDrawingArea ctxt text drawingArea
 	drawingArea `on` draw $ updateTextPreview drawingArea text textStyle
-	boxPackStart box drawingArea PackNatural 0
-	widgetShowAll drawingArea
+
+	-- TODO move to GTK/glade widget templates
+	hbox <- hBoxNew False 0
+	boxPackStart hbox drawingArea PackNatural 0
+	vbtnBox <- vButtonBoxNew
+	prepareButton stockCopy >>= containerAdd vbtnBox
+	prepareButton stockEdit >>= containerAdd vbtnBox
+	prepareButton stockDelete >>= containerAdd vbtnBox
+	boxPackStart hbox vbtnBox PackNatural 0
+
+	boxPackStart box hbox PackNatural 0
+	widgetShowAll hbox
+
+prepareButton :: StockId -> IO Button
+prepareButton stockId = do
+	btn <- buttonNew
+	img <- imageNewFromStock stockId IconSizeSmallToolbar
+	buttonSetImage btn img
+	buttonSetRelief btn ReliefNone
+	return btn
 
 showTextStyleDialog :: Builder -> GetSetting -> IORef Conf -> IO ()
 showTextStyleDialog builder (GetSetting getSetting) latestConfig = do
