@@ -233,6 +233,9 @@ setFontSizeForWidget ctxt text widget = liftIO $ do
 setFontSizeForBoundingBox :: PangoContext -> PangoLayout -> Int -> Int -> Int -> IO ()
 setFontSizeForBoundingBox ctxt text fontSize maxWidth maxHeight = do
 	contextSetFontSize ctxt $ fromIntegral fontSize
+	-- the next two lines are needed on windows.
+	fnt <- contextGetFontDescription ctxt
+	layoutSetFontDescription text $ Just fnt
 	(Rectangle _ _ rWidth rHeight) <- liftM snd $ layoutGetPixelExtents text
 	if rWidth < maxWidth && rHeight < maxHeight
 		then setFontSizeForBoundingBox ctxt text (fontSize+1) maxWidth maxHeight
