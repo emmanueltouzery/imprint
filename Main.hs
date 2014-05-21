@@ -21,9 +21,6 @@ import GtkMvvm
 minFontSize :: Int
 minFontSize = 5
 
-pixelToPoints :: Int -> Double
-pixelToPoints pixels = (fromIntegral pixels :: Double) * 72 / 96
-
 main :: IO ()
 main = do
 	initGUI
