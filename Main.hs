@@ -13,10 +13,10 @@ import Control.Monad (liftM, when)
 import Data.Maybe (fromJust, isJust)
 import Data.AppSettings (GetSetting(..), getSetting', Conf)
 import Data.IORef
-import Control.Lens hiding (Setting, setting, set)
 
 import Helpers
 import Settings
+import GtkMvvm
 
 minFontSize :: Int
 minFontSize = 5
@@ -148,7 +148,7 @@ prepareButton stockId = do
 	buttonSetRelief btn ReliefNone
 	return btn
 
-data TextStyleDialogInfo = TextStyleDialogInfo (IORef TextStyle) Button Dialog (IORef (Maybe (ConnectId Button)))
+data TextStyleDialogInfo = TextStyleDialogInfo (Model TextStyle) Button Dialog (IORef (Maybe (ConnectId Button)))
 
 prepareTextStyleDialog :: Builder -> TextStyle -> IO TextStyleDialogInfo
 prepareTextStyleDialog builder textStyle = do
@@ -157,42 +157,35 @@ prepareTextStyleDialog builder textStyle = do
 	text `layoutSetText` "2014-04-01"
 
 	curTextStyle <- newIORef textStyle
+	textStyleModel <- makeModel textStyle
 
 	dialog <- builderGetObject builder castToDialog "settings_dialog"
 	textPreview <- builderGetObject builder castToDrawingArea "textPreview"
 
 	prepareTextStyleDrawingArea ctxt text textPreview
 	textPreview `on` draw $ do
-		cTextStyle <- liftIO $ readIORef curTextStyle
+		cTextStyle <- liftIO $ readModel textStyleModel
 		renderText text cTextStyle
 
-	tieColor dialog builder "fillColor" curTextStyle textFillL
-	tieColor dialog builder "strokeColor" curTextStyle textStrokeL
+	builderGetObject builder castToColorButton "fillColor" >>= bindModel textStyleModel textFillL
+	builderGetObject builder castToColorButton "strokeColor" >>= bindModel textStyleModel textStrokeL
+
 	borderScale <- builderGetObject builder castToScale "borderScale"
 	borderAdjustment <- adjustmentNew (strokeHeightRatio textStyle *100) 0 11 1 1 1
 	rangeSetAdjustment borderScale borderAdjustment
-	dialog `on` mapEvent $ liftIO $ do
-		cTextStyle <- readIORef curTextStyle
-		adjustmentSetValue borderAdjustment (strokeHeightRatio cTextStyle *100)
-		return False
-	onValueChanged borderAdjustment $ do
-		newRatio <- liftM (/100) $ adjustmentGetValue borderAdjustment
-		modifyIORef curTextStyle (strokeHeightRatioL .~ newRatio)
-		widgetQueueDraw textPreview
+	bindModel textStyleModel strokeHeightRatioL borderAdjustment
 
 	fontButton <- builderGetObject builder castToFontButton "fontButton"
-	dialog `on` mapEvent $ liftIO $ do
-		cTextStyle <- readIORef curTextStyle
-		fontButtonSetFontName fontButton $ if (isJust $ fontName cTextStyle)
-			then fromJust $ fontName cTextStyle
-			else ""
-		return False
-		
-	onFontSet fontButton $ do
-		selectedFontName <- fontButtonGetFontName fontButton
-		modifyIORef curTextStyle (fontNameL .~ Just selectedFontName)
-		readIORef curTextStyle >>= updateFontFromTextStyle ctxt
+	bindModel textStyleModel fontNameL fontButton
+
+	-- TODO we're changing the font when any setting changes.
+	-- no need to recompute the font when the colors are changed
+	-- for instance.
+	addModelObserver textStyleModel $ \cTextStyle -> do
+		updateFontFromTextStyle ctxt cTextStyle
 		setFontSizeForWidget ctxt text textPreview
+		-- the following however is always needed.
+		widgetQueueDraw textPreview
 
 	textStyleBtnCancel <- builderGetObject builder castToButton "textStyleBtnCancel"
 	textStyleBtnCancel `on` buttonActivated $ widgetHide dialog
@@ -201,15 +194,15 @@ prepareTextStyleDialog builder textStyle = do
 
 	okSignalRef <- newIORef Nothing
 
-	return $ TextStyleDialogInfo curTextStyle textStyleBtnOk dialog okSignalRef
+	return $ TextStyleDialogInfo textStyleModel textStyleBtnOk dialog okSignalRef
 
 showTextStyleDialog :: Window -> TextStyleDialogInfo -> TextStyle -> (TextStyle -> IO ()) -> IO ()
 showTextStyleDialog parent (TextStyleDialogInfo curTextStyle textStyleBtnOk dialog okSigRef) textStyle updateCallback = do
-	writeIORef curTextStyle textStyle
+	modifyModel curTextStyle $ const textStyle
 	okSig <- readIORef okSigRef
 	when (isJust okSig) $ signalDisconnect $ fromJust okSig
 	newOkSig <- textStyleBtnOk `on` buttonActivated $ do
-		readIORef curTextStyle >>= updateCallback
+		readModel curTextStyle >>= updateCallback
 		widgetHide dialog
 	writeIORef okSigRef (Just newOkSig)
 	
@@ -255,23 +248,6 @@ updateConfig latestConfig newConfigMaker = do
 	let conf' = newConfigMaker conf
 	saveSettings conf'
 	writeIORef latestConfig conf'
-
-tieColor :: Dialog -> Builder -> String -> IORef TextStyle -> (Lens' TextStyle ColorRgba) -> IO ()
-tieColor dialog builder buttonName curTextStyle colorL = do
-	colorBtn <- builderGetObject builder castToColorButton buttonName
-	dialog `on` mapEvent $ liftIO $ do
-		textStyle <- readIORef curTextStyle
-		buttonSetColor colorBtn $ textStyle ^. colorL
-		return False
-	onColorSet colorBtn $ colorChanged curTextStyle colorBtn colorL
-	return ()
-
-colorChanged :: IORef TextStyle -> ColorButton -> (Lens' TextStyle ColorRgba) -> IO ()
-colorChanged curTextStyle btn colorL = do
-	putStrLn "color changed"
-	gtkColor <- colorButtonGetColor btn
-	alpha <- colorButtonGetAlpha btn
-	modifyIORef curTextStyle (colorL .~ readGtkColorAlpha gtkColor alpha)
 
 renderText :: PangoLayout -> TextStyle -> Render ()
 renderText text textStyle = do
