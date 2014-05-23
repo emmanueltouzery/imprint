@@ -11,8 +11,9 @@ import Data.Time.Format (formatTime)
 import System.Locale (defaultTimeLocale)
 import Control.Monad (liftM, when)
 import Data.Maybe (fromJust, isJust)
-import Data.AppSettings (GetSetting(..), getSetting', Conf)
+import Data.AppSettings (GetSetting(..), getSetting', Conf, setSetting)
 import Data.IORef
+import Control.Lens hiding (set)
 
 import Helpers
 import Settings
@@ -40,8 +41,6 @@ main = do
 
 	builder <- builderNew
 	builderAddFromFile builder "imprint.ui"
-
-	textStyleDialogInfo <- prepareTextStyleDialog builder (getSetting selectedTextStyle)
 
 	let filename = "DSC04293.JPG"
 
@@ -81,25 +80,34 @@ main = do
 	pixbufSave pbuf "newout.jpg" "jpeg" [("quality", "95")]
 	Settings.saveSettings settings
 
-	showTextStyleListDialog builder latestConfig textStyleDialogInfo
+	showTextStyleListDialog builder latestConfig
 	mainGUI
 
-showTextStyleListDialog :: Builder -> IORef Conf -> TextStyleDialogInfo -> IO ()
-showTextStyleListDialog builder latestConfig textStyleDialogInfo = do
+showTextStyleListDialog :: Builder -> IORef Conf -> IO ()
+showTextStyleListDialog builder latestConfig = do
 	dialog <- builderGetObject builder castToWindow "window1"
 	stylesVbox <- builderGetObject builder castToBox "stylesVbox"
 	containerForeach stylesVbox (\w -> containerRemove stylesVbox w)
 	conf <- readIORef latestConfig
-	let styles = getSetting' conf textStyles
+	textStyleDialogInfo <- prepareTextStyleDialog builder (getSetting' conf selectedTextStyle)
 	ctxt <- cairoCreateContext Nothing
-	
-	let editCallbacks = fmap (updateStyle latestConfig stylesVbox) [0..]
-	mapM_ (uncurry $ vboxAddStyleItem dialog stylesVbox ctxt textStyleDialogInfo) $ zip styles editCallbacks
+
+	let styles = getSetting' conf textStyles
+	let styleGetter = \idx cnf -> (getSetting' cnf textStyles) !! idx
+	let styleGettersSetters = fmap (\idx -> (styleGetter idx, updateStyle latestConfig stylesVbox idx))[0..length styles-1]
+
+	mapM_ (uncurry $ vboxAddStyleItem dialog stylesVbox ctxt textStyleDialogInfo latestConfig) styleGettersSetters
 	windowSetDefaultSize dialog 600 500
 	widgetShowAll dialog
 
 updateStyle :: IORef Conf -> Box -> Int -> TextStyle -> IO ()
-updateStyle latestConfig stylesVbox styleIdx newStyle = putStrLn "update style!"
+updateStyle latestConfig stylesVbox styleIdx newStyle = do
+	c <- readIORef latestConfig
+	let styles = getSetting' c textStyles
+	let newConf = setSetting c textStyles $ styles & ix styleIdx .~ newStyle
+	Settings.saveSettings newConf
+	writeIORef latestConfig newConf
+	widgetQueueDraw stylesVbox
 
 prepareTextStyleDrawingArea :: PangoContext -> PangoLayout -> DrawingArea -> IO ()
 prepareTextStyleDrawingArea ctxt text drawingArea = do
@@ -111,8 +119,9 @@ prepareTextStyleDrawingArea ctxt text drawingArea = do
 
 -- Maybe could use Gtk signals for the styleUpdatedCallback,
 -- but don't know how/whether it's possible.
-vboxAddStyleItem :: Window -> Box -> PangoContext -> TextStyleDialogInfo -> TextStyle -> (TextStyle -> IO ()) -> IO ()
-vboxAddStyleItem parent box ctxt textStyleDialogInfo textStyle styleUpdatedCallback = do
+vboxAddStyleItem :: Window -> Box -> PangoContext -> TextStyleDialogInfo -> IORef Conf -> (Conf->TextStyle)
+		-> (TextStyle -> IO ()) -> IO ()
+vboxAddStyleItem parent box ctxt textStyleDialogInfo latestConfig confTextStyleGetter styleUpdatedCallback = do
 	text <- layoutEmpty ctxt
 	text `layoutSetText` "2014-04-01"
 
@@ -120,7 +129,13 @@ vboxAddStyleItem parent box ctxt textStyleDialogInfo textStyle styleUpdatedCallb
 	widgetSetSizeRequest drawingArea 500 100
 
 	prepareTextStyleDrawingArea ctxt text drawingArea
-	drawingArea `on` draw $ renderText text textStyle
+	drawingArea `on` draw $ do
+		conf <- liftIO $ readIORef latestConfig
+		let cTextStyle = confTextStyleGetter conf
+		liftIO $ do
+			updateFontFromTextStyle ctxt cTextStyle
+			setFontSizeForWidget ctxt text drawingArea
+		renderText text cTextStyle
 
 	-- TODO move to GTK/glade widget templates
 	hbox <- hBoxNew False 0
@@ -129,7 +144,8 @@ vboxAddStyleItem parent box ctxt textStyleDialogInfo textStyle styleUpdatedCallb
 	prepareButton stockCopy >>= containerAdd vbtnBox
 	editBtn <- prepareButton stockEdit
 	editBtn `on` buttonActivated $ do
-		showTextStyleDialog parent textStyleDialogInfo textStyle styleUpdatedCallback
+		conf <- readIORef latestConfig
+		showTextStyleDialog parent textStyleDialogInfo (confTextStyleGetter conf) styleUpdatedCallback
  	containerAdd vbtnBox editBtn
 	prepareButton stockDelete >>= containerAdd vbtnBox
 	boxPackStart hbox vbtnBox PackNatural 0
@@ -153,7 +169,6 @@ prepareTextStyleDialog builder textStyle = do
 	text <- layoutEmpty ctxt
 	text `layoutSetText` "2014-04-01"
 
-	curTextStyle <- newIORef textStyle
 	textStyleModel <- makeModel textStyle
 
 	dialog <- builderGetObject builder castToDialog "settings_dialog"
