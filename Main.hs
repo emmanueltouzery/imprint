@@ -4,7 +4,7 @@
 module Main where
 
 import Graphics.UI.Gtk.Gdk.Pixbuf
-import Graphics.Rendering.Cairo hiding (width, height)
+import Graphics.Rendering.Cairo hiding (width, height, x)
 import Graphics.UI.Gtk hiding (styleSet)
 import Graphics.HsExif (parseFileExif, getDateTimeOriginal)
 import Data.Time.Format (formatTime)
@@ -147,9 +147,9 @@ vboxAddStyleItem parent box ctxt textStyleDialogInfo latestConfig confTextStyleG
 	copyBtn <- prepareButton stockCopy
 	copyBtn `on` buttonActivated $ do
 		conf <- readIORef latestConfig
-		let styleToCopy = confTextStyleGetter conf
+		let newStyle = styleIdL .~ getNewStyleId conf $ confTextStyleGetter conf
 		let styles = getSetting' conf textStyles
-		let newConf = setSetting conf textStyles $ styles ++ [styleToCopy]
+		let newConf = setSetting conf textStyles $ styles ++ [newStyle]
 		Settings.saveSettings newConf
 		writeIORef latestConfig newConf
 		let (styleGet, styleSet) = getStyleGetterSetter box latestConfig $ length styles
@@ -166,6 +166,14 @@ vboxAddStyleItem parent box ctxt textStyleDialogInfo latestConfig confTextStyleG
 
 	boxPackStart box hbox PackNatural 0
 	widgetShowAll hbox
+
+getNewStyleId :: Conf -> Int
+getNewStyleId conf = 1 + maximum' existingIds
+	where existingIds = fmap styleId (getSetting' conf textStyles)
+
+maximum' :: [Int] -> Int
+maximum' [] = 0
+maximum' x = maximum x
 
 prepareButton :: StockId -> IO Button
 prepareButton stockId = do

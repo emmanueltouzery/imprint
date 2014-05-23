@@ -12,6 +12,7 @@ type ColorRgba = (Double, Double, Double, Double)
 
 data TextStyle = TextStyle
 	{
+		styleId :: Int,
 		textStroke :: ColorRgba,
 		textFill :: ColorRgba,
 		strokeHeightRatio :: Double,
@@ -25,18 +26,21 @@ makeLensesWith ?? ''TextStyle $ lensRules
 textStyles :: Setting [TextStyle]
 textStyles = ListSetting "textStyles" $ [
 	TextStyle {
+		styleId = 0,
 		textStroke = (1, 0.5, 0, 1),
 		textFill = (1, 1, 0, 1),
 		strokeHeightRatio = 0.04,
 		fontName = Nothing
 	},
 	TextStyle {
+		styleId = 1,
 		textStroke = (0, 0, 0, 1),
 		textFill = (1, 1, 1, 1),
 		strokeHeightRatio = 0.010,
 		fontName = Nothing
 	},
 	TextStyle {
+		styleId = 2,
 		textStroke = (1, 1, 1, 1),
 		textFill = (0, 0, 0, 1),
 		strokeHeightRatio = 0.04,
