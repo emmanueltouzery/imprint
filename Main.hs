@@ -14,6 +14,7 @@ import Data.Maybe (fromJust, isJust)
 import Data.AppSettings (GetSetting(..), getSetting', Conf, setSetting)
 import Data.IORef
 import Control.Lens hiding (set)
+import Data.List
 
 import Helpers
 import Settings
@@ -161,11 +162,32 @@ vboxAddStyleItem parent box ctxt textStyleDialogInfo latestConfig confTextStyleG
 		conf <- readIORef latestConfig
 		showTextStyleDialog parent textStyleDialogInfo (confTextStyleGetter conf) styleUpdatedCallback
  	containerAdd vbtnBox editBtn
-	prepareButton stockDelete >>= containerAdd vbtnBox
+	deleteBtn <- prepareButton stockDelete
+	deleteBtn `on` buttonActivated $ do
+		userConfirms <- userConfirmDelete parent
+		when userConfirms $ do
+			conf <- readIORef latestConfig
+			let curStyleId = styleId $ confTextStyleGetter conf
+			let cStyles = getSetting' conf textStyles
+			let styleIdx = fromJust $ findIndex ((==curStyleId) . styleId) cStyles
+			let newConf = setSetting conf textStyles $ filter ((/=curStyleId) . styleId) cStyles
+			Settings.saveSettings newConf
+			writeIORef latestConfig newConf
+			boxWidgets <- containerGetChildren box
+			containerRemove box $ boxWidgets !! styleIdx
+		
+	containerAdd vbtnBox deleteBtn
 	boxPackStart hbox vbtnBox PackNatural 0
 
 	boxPackStart box hbox PackNatural 0
 	widgetShowAll hbox
+
+userConfirmDelete :: Window -> IO Bool
+userConfirmDelete parent = do
+	dialog <- messageDialogNew (Just parent) [DialogModal] MessageWarning ButtonsYesNo "Sure to delete the text style?"
+	resp <- dialogRun dialog
+	widgetDestroy dialog
+	return $ resp == ResponseYes
 
 getNewStyleId :: Conf -> Int
 getNewStyleId conf = 1 + maximum' existingIds
