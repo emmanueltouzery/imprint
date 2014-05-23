@@ -5,7 +5,7 @@ module Main where
 
 import Graphics.UI.Gtk.Gdk.Pixbuf
 import Graphics.Rendering.Cairo hiding (width, height)
-import Graphics.UI.Gtk
+import Graphics.UI.Gtk hiding (styleSet)
 import Graphics.HsExif (parseFileExif, getDateTimeOriginal)
 import Data.Time.Format (formatTime)
 import System.Locale (defaultTimeLocale)
@@ -93,12 +93,15 @@ showTextStyleListDialog builder latestConfig = do
 	ctxt <- cairoCreateContext Nothing
 
 	let styles = getSetting' conf textStyles
-	let styleGetter = \idx cnf -> (getSetting' cnf textStyles) !! idx
-	let styleGettersSetters = fmap (\idx -> (styleGetter idx, updateStyle latestConfig stylesVbox idx))[0..length styles-1]
+	let styleGettersSetters = fmap (getStyleGetterSetter stylesVbox latestConfig) [0..length styles-1]
 
 	mapM_ (uncurry $ vboxAddStyleItem dialog stylesVbox ctxt textStyleDialogInfo latestConfig) styleGettersSetters
 	windowSetDefaultSize dialog 600 500
 	widgetShowAll dialog
+
+getStyleGetterSetter :: Box -> IORef Conf -> Int -> (Conf->TextStyle, TextStyle -> IO ())
+getStyleGetterSetter stylesVbox latestConfig idx = (styleGetter, updateStyle latestConfig stylesVbox idx)
+	where styleGetter = \cnf -> (getSetting' cnf textStyles) !! idx
 
 updateStyle :: IORef Conf -> Box -> Int -> TextStyle -> IO ()
 updateStyle latestConfig stylesVbox styleIdx newStyle = do
@@ -141,7 +144,18 @@ vboxAddStyleItem parent box ctxt textStyleDialogInfo latestConfig confTextStyleG
 	hbox <- hBoxNew False 0
 	boxPackStart hbox drawingArea PackNatural 0
 	vbtnBox <- vButtonBoxNew
-	prepareButton stockCopy >>= containerAdd vbtnBox
+	copyBtn <- prepareButton stockCopy
+	copyBtn `on` buttonActivated $ do
+		conf <- readIORef latestConfig
+		let styleToCopy = confTextStyleGetter conf
+		let styles = getSetting' conf textStyles
+		let newConf = setSetting conf textStyles $ styles ++ [styleToCopy]
+		Settings.saveSettings newConf
+		writeIORef latestConfig newConf
+		let (styleGet, styleSet) = getStyleGetterSetter box latestConfig $ length styles
+		vboxAddStyleItem parent box ctxt textStyleDialogInfo latestConfig styleGet styleSet
+		
+	containerAdd vbtnBox copyBtn
 	editBtn <- prepareButton stockEdit
 	editBtn `on` buttonActivated $ do
 		conf <- readIORef latestConfig
