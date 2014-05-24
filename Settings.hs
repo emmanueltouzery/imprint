@@ -26,21 +26,21 @@ makeLensesWith ?? ''TextStyle $ lensRules
 textStyles :: Setting [TextStyle]
 textStyles = ListSetting "textStyles" $ [
 	TextStyle {
-		styleId = 0,
+		styleId = 1,
 		textStroke = (1, 0.5, 0, 1),
 		textFill = (1, 1, 0, 1),
 		strokeHeightRatio = 0.04,
 		fontName = Nothing
 	},
 	TextStyle {
-		styleId = 1,
+		styleId = 2,
 		textStroke = (0, 0, 0, 1),
 		textFill = (1, 1, 1, 1),
 		strokeHeightRatio = 0.010,
 		fontName = Nothing
 	},
 	TextStyle {
-		styleId = 2,
+		styleId = 3,
 		textStroke = (1, 1, 1, 1),
 		textFill = (0, 0, 0, 1),
 		strokeHeightRatio = 0.04,
@@ -48,14 +48,8 @@ textStyles = ListSetting "textStyles" $ [
 	}
 	]
 
-selectedTextStyle :: Setting TextStyle
-selectedTextStyle = Setting "textStyle" $ TextStyle
-	{
-		textStroke = (1, 0.5, 0, 1),
-		textFill = (1, 1, 0, 1),
-		strokeHeightRatio = 0.04,
-		fontName = Nothing
-	}
+selectedTextStyleId :: Setting Int
+selectedTextStyleId = Setting "selectedTextStyleId" 1
 
 textSizeFromWidth :: Setting Double
 textSizeFromWidth = Setting "textSizeFromWidth" 0.04
@@ -68,7 +62,7 @@ marginYFromWidth = Setting "marginYFromWidth" 0.025
 
 getAllSettings :: DefaultConfig
 getAllSettings = getDefaultConfig $ do
-	setting selectedTextStyle
+	setting selectedTextStyleId
 	setting textStyles
 	setting textSizeFromWidth
 	setting marginXFromWidth

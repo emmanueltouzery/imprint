@@ -62,7 +62,7 @@ main = do
 	ctxt <- cairoCreateContext Nothing
 	text <- layoutEmpty ctxt
 	text `layoutSetText` formattedDate
-	updateFontFromTextStyle ctxt $ getSetting selectedTextStyle
+	updateFontFromTextStyle ctxt $ getSelectedTextStyle settings
 
 	let textSizePoints = fromIntegral width * getSetting textSizeFromWidth
 	contextSetFontSize ctxt textSizePoints
@@ -75,7 +75,7 @@ main = do
 		(Rectangle _ _ rWidth rHeight) <- liftM snd $ liftIO (layoutGetPixelExtents text)
 		moveTo (fromIntegral $ width - rWidth - marginX)
 			(fromIntegral $ height - rHeight - marginY)
-		renderText text (getSetting selectedTextStyle)
+		renderText text (getSelectedTextStyle settings)
 
 	pbuf <- pixbufNewFromSurface sur 0 0 width height
 	pixbufSave pbuf "newout.jpg" "jpeg" [("quality", "95")]
@@ -84,13 +84,21 @@ main = do
 	showTextStyleListDialog builder latestConfig
 	mainGUI
 
+getSelectedTextStyle :: Conf -> TextStyle
+getSelectedTextStyle conf = case find ((==selectedStyleId) . styleId) allStyles of
+		Nothing -> error $ "Can't find text style of id " ++ show selectedStyleId
+		Just x -> x
+	where
+		allStyles = getSetting' conf textStyles
+		selectedStyleId = getSetting' conf selectedTextStyleId
+
 showTextStyleListDialog :: Builder -> IORef Conf -> IO ()
 showTextStyleListDialog builder latestConfig = do
 	dialog <- builderGetObject builder castToWindow "window1"
 	stylesVbox <- builderGetObject builder castToBox "stylesVbox"
 	containerForeach stylesVbox (\w -> containerRemove stylesVbox w)
 	conf <- readIORef latestConfig
-	textStyleDialogInfo <- prepareTextStyleDialog builder (getSetting' conf selectedTextStyle)
+	textStyleDialogInfo <- prepareTextStyleDialog builder $ getSelectedTextStyle conf
 	ctxt <- cairoCreateContext Nothing
 
 	let styles = getSetting' conf textStyles
