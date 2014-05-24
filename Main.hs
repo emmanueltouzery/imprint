@@ -5,6 +5,7 @@ module Main where
 
 import Graphics.UI.Gtk.Gdk.Pixbuf
 import Graphics.Rendering.Cairo hiding (width, height, x)
+import Graphics.Rendering.Cairo.SVG
 import Graphics.UI.Gtk hiding (styleSet)
 import Graphics.HsExif (parseFileExif, getDateTimeOriginal)
 import Data.Time.Format (formatTime)
@@ -94,6 +95,7 @@ getSelectedTextStyle conf = case find ((==selectedStyleId) . styleId) allStyles 
 
 showTextStyleListDialog :: Builder -> IORef Conf -> IO ()
 showTextStyleListDialog builder latestConfig = do
+	activeItemSvg <- svgNewFromFile "active_item.svg"
 	dialog <- builderGetObject builder castToWindow "window1"
 	stylesVbox <- builderGetObject builder castToBox "stylesVbox"
 	containerForeach stylesVbox (\w -> containerRemove stylesVbox w)
@@ -104,7 +106,7 @@ showTextStyleListDialog builder latestConfig = do
 	let styles = getSetting' conf textStyles
 	let styleGettersSetters = fmap (getStyleGetterSetter stylesVbox latestConfig) [0..length styles-1]
 
-	mapM_ (uncurry $ vboxAddStyleItem dialog stylesVbox ctxt textStyleDialogInfo latestConfig) styleGettersSetters
+	mapM_ (uncurry $ vboxAddStyleItem dialog stylesVbox ctxt activeItemSvg textStyleDialogInfo latestConfig) styleGettersSetters
 	windowSetDefaultSize dialog 600 500
 	widgetShowAll dialog
 
@@ -131,14 +133,19 @@ prepareTextStyleDrawingArea ctxt text drawingArea = do
 
 -- Maybe could use Gtk signals for the styleUpdatedCallback,
 -- but don't know how/whether it's possible.
-vboxAddStyleItem :: Window -> Box -> PangoContext -> TextStyleDialogInfo -> IORef Conf -> (Conf->TextStyle)
+vboxAddStyleItem :: Window -> Box -> PangoContext -> SVG -> TextStyleDialogInfo -> IORef Conf -> (Conf->TextStyle)
 		-> (TextStyle -> IO ()) -> IO ()
-vboxAddStyleItem parent box ctxt textStyleDialogInfo latestConfig confTextStyleGetter styleUpdatedCallback = do
+vboxAddStyleItem parent box ctxt activeItemSvg textStyleDialogInfo latestConfig confTextStyleGetter styleUpdatedCallback = do
 	text <- layoutEmpty ctxt
 	text `layoutSetText` "2014-04-01"
 
+	checkbox <- drawingAreaNew
+	widgetSetSizeRequest checkbox 50 100
+ 	let cbH = snd $ svgGetSize activeItemSvg
+	let cbYtop = 100 `div` 2 - cbH `div` 2
+
 	drawingArea <- drawingAreaNew
-	widgetSetSizeRequest drawingArea 500 100
+	widgetSetSizeRequest drawingArea 450 100
 
 	prepareTextStyleDrawingArea ctxt text drawingArea
 	drawingArea `on` draw $ do
@@ -149,8 +156,18 @@ vboxAddStyleItem parent box ctxt textStyleDialogInfo latestConfig confTextStyleG
 			setFontSizeForWidget ctxt text drawingArea
 		renderText text cTextStyle
 
-	-- TODO move to GTK/glade widget templates
+	checkbox `on` draw $ do
+		conf <- liftIO $ readIORef latestConfig
+		let cTextStyle = confTextStyleGetter conf
+		let selectedStyleId = getSetting' conf selectedTextStyleId
+		when (selectedStyleId == styleId cTextStyle) $ do
+			translate 0 $ fromIntegral cbYtop
+			svgRender activeItemSvg >> return ()
+			translate 0 $ (-fromIntegral cbYtop)
+
+	-- TODO move to GTK/glade widget templates?
 	hbox <- hBoxNew False 0
+	boxPackStart hbox checkbox PackNatural 0
 	boxPackStart hbox drawingArea PackNatural 0
 	vbtnBox <- vButtonBoxNew
 	copyBtn <- prepareButton stockCopy
@@ -162,7 +179,7 @@ vboxAddStyleItem parent box ctxt textStyleDialogInfo latestConfig confTextStyleG
 		Settings.saveSettings newConf
 		writeIORef latestConfig newConf
 		let (styleGet, styleSet) = getStyleGetterSetter box latestConfig $ length styles
-		vboxAddStyleItem parent box ctxt textStyleDialogInfo latestConfig styleGet styleSet
+		vboxAddStyleItem parent box ctxt activeItemSvg textStyleDialogInfo latestConfig styleGet styleSet
 		
 	containerAdd vbtnBox copyBtn
 	editBtn <- prepareButton stockEdit
