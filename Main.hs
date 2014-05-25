@@ -104,21 +104,26 @@ showTextStyleListDialog builder latestConfig = do
 	ctxt <- cairoCreateContext Nothing
 
 	let styles = getSetting' conf textStyles
-	let styleGettersSetters = fmap (getStyleGetterSetter stylesVbox latestConfig) [0..length styles-1]
+	let styleIds = fmap styleId styles
+	let styleGettersSetters = fmap (getStyleGetterSetter stylesVbox latestConfig) styleIds
 
 	mapM_ (uncurry $ vboxAddStyleItem dialog stylesVbox ctxt activeItemSvg textStyleDialogInfo latestConfig) styleGettersSetters
 	windowSetDefaultSize dialog 600 500
 	widgetShowAll dialog
 
 getStyleGetterSetter :: Box -> IORef Conf -> Int -> (Conf->TextStyle, TextStyle -> IO ())
-getStyleGetterSetter stylesVbox latestConfig idx = (styleGetter, updateStyle latestConfig stylesVbox idx)
-	where styleGetter = \cnf -> (getSetting' cnf textStyles) !! idx
+getStyleGetterSetter stylesVbox latestConfig cStyleId = (getStyleById cStyleId, updateStyle latestConfig stylesVbox cStyleId)
+
+getStyleById :: Int -> Conf -> TextStyle
+getStyleById cStyleId conf = fromJust $ find ((==cStyleId) . styleId) allStyles
+	where allStyles = getSetting' conf textStyles
 
 updateStyle :: IORef Conf -> Box -> Int -> TextStyle -> IO ()
-updateStyle latestConfig stylesVbox styleIdx newStyle = do
+updateStyle latestConfig stylesVbox cStyleId newStyle = do
 	updateConfig latestConfig $ \c -> do
-		let styles = getSetting' c textStyles
-		let newConf = setSetting c textStyles $ styles & ix styleIdx .~ newStyle
+		let allStyles = getSetting' c textStyles
+		let styleIdx = fromJust $ findIndex ((==cStyleId) . styleId) allStyles
+		let newConf = setSetting c textStyles $ allStyles & ix styleIdx .~ newStyle
 		widgetQueueDraw stylesVbox
 		return newConf
 
@@ -186,7 +191,7 @@ vboxAddStyleItem parent box ctxt activeItemSvg textStyleDialogInfo latestConfig 
 		let newConf = setSetting conf textStyles $ styles ++ [newStyle]
 		Settings.saveSettings newConf
 		writeIORef latestConfig newConf
-		let (styleGet, styleSet) = getStyleGetterSetter box latestConfig $ length styles
+		let (styleGet, styleSet) = getStyleGetterSetter box latestConfig $ styleId newStyle
 		vboxAddStyleItem parent box ctxt activeItemSvg textStyleDialogInfo latestConfig styleGet styleSet
 		
 	containerAdd vbtnBox copyBtn
