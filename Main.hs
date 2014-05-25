@@ -11,9 +11,9 @@ import Control.Monad (liftM)
 import Data.AppSettings (GetSetting(..))
 import Data.IORef
 
+import TextStylesSettings
 import Settings
 import SettingsWindow
-import TextStylesSettings
 
 minFontSize :: Int
 minFontSize = 5
@@ -76,6 +76,5 @@ main = do
 	pixbufSave pbuf "newout.jpg" "jpeg" [("quality", "95")]
 	Settings.saveSettings settings
 
-	showTextStyleListDialog builder latestConfig
 	showSettingsWindow builder latestConfig
 	mainGUI

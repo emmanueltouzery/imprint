@@ -28,8 +28,8 @@ getSelectedTextStyle conf = case find ((==selectedStyleId) . styleId) allStyles 
 		allStyles = getSetting' conf textStyles
 		selectedStyleId = getSetting' conf selectedTextStyleId
 
-showTextStyleListDialog :: Builder -> IORef Conf -> IO ()
-showTextStyleListDialog builder latestConfig = do
+showTextStyleListDialog :: Builder -> IORef Conf -> Window -> IO ()
+showTextStyleListDialog builder latestConfig parent = do
 	activeItemSvg <- svgNewFromFile "active_item.svg"
 	dialog <- builderGetObject builder castToWindow "window1"
 	stylesVbox <- builderGetObject builder castToBox "stylesVbox"
@@ -44,6 +44,7 @@ showTextStyleListDialog builder latestConfig = do
 
 	mapM_ (uncurry $ vboxAddStyleItem dialog stylesVbox ctxt activeItemSvg textStyleDialogInfo latestConfig) styleGettersSetters
 	windowSetDefaultSize dialog 600 500
+	set dialog [windowTransientFor := parent]
 	widgetShowAll dialog
 
 getStyleGetterSetter :: Box -> IORef Conf -> Int -> (Conf->TextStyle, TextStyle -> IO ())
