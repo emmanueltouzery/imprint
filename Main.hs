@@ -116,12 +116,11 @@ getStyleGetterSetter stylesVbox latestConfig idx = (styleGetter, updateStyle lat
 
 updateStyle :: IORef Conf -> Box -> Int -> TextStyle -> IO ()
 updateStyle latestConfig stylesVbox styleIdx newStyle = do
-	c <- readIORef latestConfig
-	let styles = getSetting' c textStyles
-	let newConf = setSetting c textStyles $ styles & ix styleIdx .~ newStyle
-	Settings.saveSettings newConf
-	writeIORef latestConfig newConf
-	widgetQueueDraw stylesVbox
+	updateConfig latestConfig $ \c -> do
+		let styles = getSetting' c textStyles
+		let newConf = setSetting c textStyles $ styles & ix styleIdx .~ newStyle
+		widgetQueueDraw stylesVbox
+		return newConf
 
 prepareTextStyleDrawingArea :: PangoContext -> PangoLayout -> DrawingArea -> IO ()
 prepareTextStyleDrawingArea ctxt text drawingArea = do
