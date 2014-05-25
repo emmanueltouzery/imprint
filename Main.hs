@@ -222,9 +222,9 @@ removeTextStyle :: Window -> (Conf->TextStyle) -> Box -> Conf -> IO Conf
 removeTextStyle parent confTextStyleGetter box conf = do
 	let styleIdToRemove = styleId $ confTextStyleGetter conf
 	let cStyles = getSetting' conf textStyles
-	if (length cStyles == 1)
+	if styleIdToRemove == getSetting' conf selectedTextStyleId
 		then do
-			displayError parent "Cannot delete the last text style"
+			displayError parent "Cannot delete the selected text style"
 			return conf
 		else do
 			let styleIdx = fromJust $ findIndex ((==styleIdToRemove) . styleId) cStyles
