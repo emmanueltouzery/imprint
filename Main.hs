@@ -205,22 +205,23 @@ vboxAddStyleItem parent box ctxt activeItemSvg textStyleDialogInfo latestConfig 
 	deleteBtn <- prepareButton stockDelete
 	deleteBtn `on` buttonActivated $ do
 		userConfirms <- userConfirmDelete parent
-		when userConfirms $ do
-			conf <- readIORef latestConfig
-			let curStyleId = styleId $ confTextStyleGetter conf
-			let cStyles = getSetting' conf textStyles
-			let styleIdx = fromJust $ findIndex ((==curStyleId) . styleId) cStyles
-			let newConf = setSetting conf textStyles $ filter ((/=curStyleId) . styleId) cStyles
-			Settings.saveSettings newConf
-			writeIORef latestConfig newConf
-			boxWidgets <- containerGetChildren box
-			containerRemove box $ boxWidgets !! styleIdx
+		when userConfirms $ updateConfig latestConfig $ removeTextStyle confTextStyleGetter box
 		
 	containerAdd vbtnBox deleteBtn
 	boxPackStart hbox vbtnBox PackNatural 0
 
 	boxPackStart box hbox PackNatural 0
 	widgetShowAll hbox
+
+removeTextStyle :: (Conf->TextStyle) -> Box -> Conf -> IO Conf
+removeTextStyle confTextStyleGetter box conf = do
+	let styleIdToRemove = styleId $ confTextStyleGetter conf
+	let cStyles = getSetting' conf textStyles
+	let styleIdx = fromJust $ findIndex ((==styleIdToRemove) . styleId) cStyles
+	let newConf = setSetting conf textStyles $ filter ((/=styleIdToRemove) . styleId) cStyles
+	boxWidgets <- containerGetChildren box
+	containerRemove box $ boxWidgets !! styleIdx
+	return newConf
 
 userConfirmDelete :: Window -> IO Bool
 userConfirmDelete parent = do
@@ -338,10 +339,10 @@ updateFontFromTextStyle ctxt textStyle = do
 	--liftIO $ layoutSetFontDescription text (Just fontDesc)
 	contextSetFontDescription ctxt font
 
-updateConfig :: IORef Conf -> (Conf -> Conf) -> IO ()
+updateConfig :: IORef Conf -> (Conf -> IO Conf) -> IO ()
 updateConfig latestConfig newConfigMaker = do
 	conf <- readIORef latestConfig
-	let conf' = newConfigMaker conf
+	conf' <- newConfigMaker conf
 	saveSettings conf'
 	writeIORef latestConfig conf'
 
