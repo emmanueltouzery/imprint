@@ -12,6 +12,7 @@ import Data.AppSettings (GetSetting(..))
 import Data.IORef
 
 import Settings
+import SettingsWindow
 import TextStylesSettings
 
 minFontSize :: Int
@@ -76,4 +77,5 @@ main = do
 	Settings.saveSettings settings
 
 	showTextStyleListDialog builder latestConfig
+	showSettingsWindow builder latestConfig
 	mainGUI
