@@ -319,7 +319,7 @@ showTextStyleDialog parent (TextStyleDialogInfo curTextStyle textStyleBtnOk dial
 		widgetHide dialog
 	writeIORef okSigRef (Just newOkSig)
 	
-	windowSetDefaultSize dialog 450 400
+	windowSetDefaultSize dialog 450 300
 	set dialog [windowTransientFor := parent]
 	dialogRun dialog
 	return ()
