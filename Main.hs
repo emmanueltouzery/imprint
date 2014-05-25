@@ -165,6 +165,21 @@ vboxAddStyleItem parent box ctxt activeItemSvg textStyleDialogInfo latestConfig 
 			svgRender activeItemSvg >> return ()
 			translate 0 $ (-fromIntegral cbYtop)
 
+	let styleSelectCb = do
+		conf <- liftIO $ readIORef latestConfig
+		let clickedStyleId = styleId $ confTextStyleGetter conf
+		let newConf = setSetting conf selectedTextStyleId clickedStyleId
+		liftIO $ do
+			Settings.saveSettings newConf
+			writeIORef latestConfig newConf
+			widgetQueueDraw box
+		return True
+
+	widgetAddEvents checkbox [ButtonPressMask, ButtonReleaseMask]
+	widgetAddEvents drawingArea [ButtonPressMask, ButtonReleaseMask]
+	checkbox `on` buttonReleaseEvent $ styleSelectCb
+	drawingArea `on` buttonReleaseEvent $ styleSelectCb
+
 	-- TODO move to GTK/glade widget templates?
 	hbox <- hBoxNew False 0
 	boxPackStart hbox checkbox PackNatural 0
