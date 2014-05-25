@@ -198,7 +198,7 @@ vboxAddStyleItem parent box ctxt activeItemSvg textStyleDialogInfo latestConfig 
 	deleteBtn <- prepareButton stockDelete
 	deleteBtn `on` buttonActivated $ do
 		userConfirms <- userConfirmDelete parent
-		when userConfirms $ updateConfig latestConfig $ removeTextStyle confTextStyleGetter box
+		when userConfirms $ updateConfig latestConfig $ removeTextStyle parent confTextStyleGetter box
 		
 	containerAdd vbtnBox deleteBtn
 	boxPackStart hbox vbtnBox PackNatural 0
@@ -213,15 +213,26 @@ changeSelectedConfig confTextStyleGetter box conf = do
 	widgetQueueDraw box
 	return newConf
 
-removeTextStyle :: (Conf->TextStyle) -> Box -> Conf -> IO Conf
-removeTextStyle confTextStyleGetter box conf = do
+removeTextStyle :: Window -> (Conf->TextStyle) -> Box -> Conf -> IO Conf
+removeTextStyle parent confTextStyleGetter box conf = do
 	let styleIdToRemove = styleId $ confTextStyleGetter conf
 	let cStyles = getSetting' conf textStyles
-	let styleIdx = fromJust $ findIndex ((==styleIdToRemove) . styleId) cStyles
-	let newConf = setSetting conf textStyles $ filter ((/=styleIdToRemove) . styleId) cStyles
-	boxWidgets <- containerGetChildren box
-	containerRemove box $ boxWidgets !! styleIdx
-	return newConf
+	if (length cStyles == 1)
+		then do
+			displayError parent "Cannot delete the last text style"
+			return conf
+		else do
+			let styleIdx = fromJust $ findIndex ((==styleIdToRemove) . styleId) cStyles
+			let newConf = setSetting conf textStyles $ filter ((/=styleIdToRemove) . styleId) cStyles
+			boxWidgets <- containerGetChildren box
+			containerRemove box $ boxWidgets !! styleIdx
+			return newConf
+
+displayError :: Window -> String -> IO ()
+displayError parent msg = do
+	dialog <- messageDialogNew (Just parent) [DialogModal] MessageError ButtonsOk msg
+	dialogRun dialog
+	widgetDestroy dialog
 
 userConfirmDelete :: Window -> IO Bool
 userConfirmDelete parent = do
