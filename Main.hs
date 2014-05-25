@@ -166,13 +166,7 @@ vboxAddStyleItem parent box ctxt activeItemSvg textStyleDialogInfo latestConfig 
 			translate 0 $ (-fromIntegral cbYtop)
 
 	let styleSelectCb = do
-		conf <- liftIO $ readIORef latestConfig
-		let clickedStyleId = styleId $ confTextStyleGetter conf
-		let newConf = setSetting conf selectedTextStyleId clickedStyleId
-		liftIO $ do
-			Settings.saveSettings newConf
-			writeIORef latestConfig newConf
-			widgetQueueDraw box
+		liftIO $ updateConfig latestConfig $ changeSelectedConfig confTextStyleGetter box
 		return True
 
 	widgetAddEvents checkbox [ButtonPressMask, ButtonReleaseMask]
@@ -212,6 +206,13 @@ vboxAddStyleItem parent box ctxt activeItemSvg textStyleDialogInfo latestConfig 
 
 	boxPackStart box hbox PackNatural 0
 	widgetShowAll hbox
+
+changeSelectedConfig :: (Conf->TextStyle) -> Box -> Conf -> IO Conf
+changeSelectedConfig confTextStyleGetter box conf = do
+	let clickedStyleId = styleId $ confTextStyleGetter conf
+	let newConf = setSetting conf selectedTextStyleId clickedStyleId
+	widgetQueueDraw box
+	return newConf
 
 removeTextStyle :: (Conf->TextStyle) -> Box -> Conf -> IO Conf
 removeTextStyle confTextStyleGetter box conf = do
