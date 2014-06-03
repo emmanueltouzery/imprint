@@ -31,7 +31,7 @@ getSelectedTextStyle conf = case find ((==selectedStyleId) . styleId) allStyles 
 showTextStyleListDialog :: Builder -> IORef Conf -> Window -> IO ()
 showTextStyleListDialog builder latestConfig parent = do
 	activeItemSvg <- svgNewFromFile "active_item.svg"
-	dialog <- builderGetObject builder castToWindow "window1"
+	dialog <- builderGetObject builder castToDialog "dialog1"
 	stylesVbox <- builderGetObject builder castToBox "stylesVbox"
 	containerForeach stylesVbox (\w -> containerRemove stylesVbox w)
 	conf <- readIORef latestConfig
@@ -42,10 +42,15 @@ showTextStyleListDialog builder latestConfig parent = do
 	let styleIds = fmap styleId styles
 	let styleGettersSetters = fmap (getStyleGetterSetter stylesVbox latestConfig) styleIds
 
+	textStyleListBtnCancel <- builderGetObject builder castToButton "textStyleListBtnCancel"
+	textStyleListBtnCancel `on` buttonActivated $ widgetHide dialog
+
 	mapM_ (uncurry $ vboxAddStyleItem dialog stylesVbox ctxt activeItemSvg textStyleDialogInfo latestConfig) styleGettersSetters
 	windowSetDefaultSize dialog 600 500
 	set dialog [windowTransientFor := parent]
-	widgetShowAll dialog
+	dialogRun dialog
+	widgetHide dialog
+	return ()
 
 getStyleGetterSetter :: Box -> IORef Conf -> Int -> (Conf->TextStyle, TextStyle -> IO ())
 getStyleGetterSetter stylesVbox latestConfig cStyleId = (getStyleById cStyleId, updateStyle latestConfig stylesVbox cStyleId)
@@ -73,7 +78,7 @@ prepareTextStyleDrawingArea ctxt text drawingArea = do
 
 -- Maybe could use Gtk signals for the styleUpdatedCallback,
 -- but don't know how/whether it's possible.
-vboxAddStyleItem :: Window -> Box -> PangoContext -> SVG -> TextStyleDialogInfo -> IORef Conf -> (Conf->TextStyle)
+vboxAddStyleItem :: Dialog -> Box -> PangoContext -> SVG -> TextStyleDialogInfo -> IORef Conf -> (Conf->TextStyle)
 		-> (TextStyle -> IO ()) -> IO ()
 vboxAddStyleItem parent box ctxt activeItemSvg textStyleDialogInfo latestConfig confTextStyleGetter styleUpdatedCallback = do
 	text <- layoutEmpty ctxt
@@ -154,7 +159,7 @@ changeSelectedConfig confTextStyleGetter box conf = do
 	widgetQueueDraw box
 	return newConf
 
-removeTextStyle :: Window -> (Conf->TextStyle) -> Box -> Conf -> IO Conf
+removeTextStyle :: Dialog -> (Conf->TextStyle) -> Box -> Conf -> IO Conf
 removeTextStyle parent confTextStyleGetter box conf = do
 	let styleIdToRemove = styleId $ confTextStyleGetter conf
 	let cStyles = getSetting' conf textStyles
@@ -169,15 +174,15 @@ removeTextStyle parent confTextStyleGetter box conf = do
 			containerRemove box $ boxWidgets !! styleIdx
 			return newConf
 
-displayError :: Window -> String -> IO ()
+displayError :: WindowClass a => a -> String -> IO ()
 displayError parent msg = do
-	dialog <- messageDialogNew (Just parent) [DialogModal] MessageError ButtonsOk msg
+	dialog <- messageDialogNew (Just $ toWindow parent) [DialogModal] MessageError ButtonsOk msg
 	dialogRun dialog
 	widgetDestroy dialog
 
-userConfirmDelete :: Window -> IO Bool
+userConfirmDelete :: WindowClass a => a -> IO Bool
 userConfirmDelete parent = do
-	dialog <- messageDialogNew (Just parent) [DialogModal] MessageWarning ButtonsYesNo "Sure to delete the text style?"
+	dialog <- messageDialogNew (Just $ toWindow parent) [DialogModal] MessageWarning ButtonsYesNo "Sure to delete the text style?"
 	resp <- dialogRun dialog
 	widgetDestroy dialog
 	return $ resp == ResponseYes
@@ -245,7 +250,7 @@ prepareTextStyleDialog builder textStyle = do
 
 	return $ TextStyleDialogInfo textStyleModel textStyleBtnOk dialog okSignalRef
 
-showTextStyleDialog :: Window -> TextStyleDialogInfo -> TextStyle -> (TextStyle -> IO ()) -> IO ()
+showTextStyleDialog :: Dialog -> TextStyleDialogInfo -> TextStyle -> (TextStyle -> IO ()) -> IO ()
 showTextStyleDialog parent (TextStyleDialogInfo curTextStyle textStyleBtnOk dialog okSigRef) textStyle updateCallback = do
 	modifyModel curTextStyle $ const textStyle
 	okSig <- readIORef okSigRef
@@ -258,6 +263,7 @@ showTextStyleDialog parent (TextStyleDialogInfo curTextStyle textStyleBtnOk dial
 	windowSetDefaultSize dialog 450 300
 	set dialog [windowTransientFor := parent]
 	dialogRun dialog
+	widgetHide dialog
 	return ()
 
 contextSetFontSize :: PangoContext -> Double -> IO ()
