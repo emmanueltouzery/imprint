@@ -73,6 +73,10 @@ drawImageLayout drawingArea aspectRatioCombo latestConfig text = do
 	let top = ((h-effectiveH)/2)
 
 	rectangle 0 top effectiveW effectiveH
+	setSourceRGB 0 0 0
+	strokePreserve
+	setSourceRGB 1 1 1
+	fill
 	save
 	translate 0 top
 
