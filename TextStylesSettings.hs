@@ -9,7 +9,7 @@ import Graphics.UI.Gtk hiding (styleSet)
 import Data.Maybe (fromJust, isJust)
 import Data.IORef
 import Control.Monad (when, liftM)
-import Data.AppSettings (getSetting', Conf, setSetting)
+import Data.AppSettings (getSetting', Conf, setSetting, GetSetting(..))
 import Data.List
 import Control.Lens hiding (set)
 
@@ -20,13 +20,13 @@ import GtkMvvm
 minFontSize :: Int
 minFontSize = 5
 
-getSelectedTextStyle :: Conf -> TextStyle
-getSelectedTextStyle conf = case find ((==selectedStyleId) . styleId) allStyles of
+getSelectedTextStyle :: GetSetting -> TextStyle
+getSelectedTextStyle (GetSetting getSetting) = case find ((==selectedStyleId) . styleId) allStyles of
 		Nothing -> error $ "Can't find text style of id " ++ show selectedStyleId
 		Just x -> x
 	where
-		allStyles = getSetting' conf textStyles
-		selectedStyleId = getSetting' conf selectedTextStyleId
+		allStyles = getSetting textStyles
+		selectedStyleId = getSetting selectedTextStyleId
 
 showTextStyleListDialog :: Builder -> IORef Conf -> Window -> IO ()
 showTextStyleListDialog builder latestConfig parent = do
@@ -35,7 +35,8 @@ showTextStyleListDialog builder latestConfig parent = do
 	stylesVbox <- builderGetObject builder castToBox "stylesVbox"
 	containerForeach stylesVbox (\w -> containerRemove stylesVbox w)
 	conf <- readIORef latestConfig
-	textStyleDialogInfo <- prepareTextStyleDialog builder $ getSelectedTextStyle conf
+	textStyleDialogInfo <- prepareTextStyleDialog builder $
+		getSelectedTextStyle (GetSetting $ getSetting' conf)
 	ctxt <- cairoCreateContext Nothing
 
 	let styles = getSetting' conf textStyles

@@ -4,13 +4,14 @@ module SettingsWindow where
 import Graphics.UI.Gtk hiding (styleSet)
 import Graphics.Rendering.Cairo hiding (width, height, x)
 import Data.IORef
-import Data.AppSettings (getSetting', Conf, setSetting)
+import Data.AppSettings (getSetting', Conf, GetSetting(..))
 import Data.List
 import Data.Maybe (fromJust)
 import Control.Monad (liftM)
 
 import TextStylesSettings
 import Settings
+import FrameRenderer (renderFrame)
 
 showSettingsWindow :: Builder -> IORef Conf -> IO ()
 showSettingsWindow builder latestConfig = do
@@ -24,7 +25,7 @@ showSettingsWindow builder latestConfig = do
 
 	textLayout <- layoutEmpty ctxt
 	textLayout `layoutSetText` "2014-04-01"
-	imageLayout `on` draw $ drawImageLayout imageLayout aspectRatioCombo latestConfig ctxt textLayout
+	imageLayout `on` draw $ drawImageLayout imageLayout aspectRatioCombo latestConfig textLayout
 
 	pickTextStyleBtn <- builderGetObject builder castToButton "picktextstylebtn"
 	pickTextStyleBtn `on` buttonActivated $ do
@@ -56,8 +57,8 @@ getHeightMultiplier aspectRatioCombo = do
 		0 -> 3/4
 		_ -> 2/3
 
-drawImageLayout :: DrawingArea -> ComboBox -> IORef Conf -> PangoContext -> PangoLayout -> Render ()
-drawImageLayout drawingArea aspectRatioCombo latestConfig ctxt text = do
+drawImageLayout :: DrawingArea -> ComboBox -> IORef Conf -> PangoLayout -> Render ()
+drawImageLayout drawingArea aspectRatioCombo latestConfig text = do
 	heightMultiplier <- liftIO $ getHeightMultiplier aspectRatioCombo
 	conf <- liftIO $ readIORef latestConfig
 
@@ -69,16 +70,13 @@ drawImageLayout drawingArea aspectRatioCombo latestConfig ctxt text = do
 		then (w, w*heightMultiplier)
 		else (h/heightMultiplier, h)
 
-	rectangle 0 ((h-effectiveH)/2) effectiveW effectiveH
-	moveTo 0 0
+	let top = ((h-effectiveH)/2)
 
+	rectangle 0 top effectiveW effectiveH
+	save
+	translate 0 top
 
-	-- bottom right corner
-	let cTextStyle = fromJust $ find ((== getSetting' conf selectedTextStyleId) . styleId)
-		$ getSetting' conf textStyles
-	liftIO $ do
-		updateFontFromTextStyle ctxt cTextStyle
-		setFontSizeForWidget ctxt text drawingArea
-	renderText text cTextStyle
+	renderFrame (floor effectiveW) (floor effectiveH) text (GetSetting $ getSetting' conf)
+	restore
 	return ()
 

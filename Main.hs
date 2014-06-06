@@ -7,13 +7,13 @@ import Graphics.UI.Gtk hiding (styleSet)
 import Graphics.HsExif (parseFileExif, getDateTimeOriginal)
 import Data.Time.Format (formatTime)
 import System.Locale (defaultTimeLocale)
-import Control.Monad (liftM)
 import Data.AppSettings (GetSetting(..))
 import Data.IORef
 
 import TextStylesSettings
 import Settings
 import SettingsWindow
+import FrameRenderer (renderFrame)
 
 minFontSize :: Int
 minFontSize = 5
@@ -27,7 +27,8 @@ main = do
 	-- Therefore it's a special situation because
 	-- the settings can change anytime.
 	-- in the rest of the app however they'll be static.
-	(settings, GetSetting getSetting) <- Settings.readSettings
+	(settings, gs) <- Settings.readSettings
+	let (GetSetting getSetting) = gs
 
 	-- ############ TODO I think i don't need to hold the config in an IORef
 	-- now. I want realtime edit when previewing changes in the OK/Cancel dialog.
@@ -57,7 +58,7 @@ main = do
 	ctxt <- cairoCreateContext Nothing
 	text <- layoutEmpty ctxt
 	text `layoutSetText` formattedDate
-	updateFontFromTextStyle ctxt $ getSelectedTextStyle settings
+	updateFontFromTextStyle ctxt $ getSelectedTextStyle gs
 
 	let textSizePoints = fromIntegral width * getSetting textSizeFromWidth
 	contextSetFontSize ctxt textSizePoints
@@ -65,12 +66,7 @@ main = do
 	renderWith sur $ do
 		setSourcePixbuf img 0 0
 		paint
-		let marginX = floor $ fromIntegral width * getSetting marginXFromWidth
-		let marginY = floor $ fromIntegral width * getSetting marginYFromWidth
-		(Rectangle _ _ rWidth rHeight) <- liftM snd $ liftIO (layoutGetPixelExtents text)
-		moveTo (fromIntegral $ width - rWidth - marginX)
-			(fromIntegral $ height - rHeight - marginY)
-		renderText text (getSelectedTextStyle settings)
+		renderFrame width height text gs
 
 	pbuf <- pixbufNewFromSurface sur 0 0 width height
 	pixbufSave pbuf "newout.jpg" "jpeg" [("quality", "95")]
