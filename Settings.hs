@@ -64,6 +64,10 @@ data DisplayItem = DisplayItem
 		marginYFromWidth :: Double,
 		position :: ItemPosition
 	} deriving (Show, Read, Eq)
+--
+-- http://stackoverflow.com/questions/17132514/
+makeLensesWith ?? ''DisplayItem $ lensRules
+  & lensField .~ (\name -> Just (name ++ "L"))
 
 displayItems :: Setting [DisplayItem]
 displayItems = ListSetting "displayItems" $ [
