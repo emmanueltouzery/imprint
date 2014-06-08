@@ -1,5 +1,6 @@
 {-# LANGUAGE RankNTypes, MultiParamTypeClasses, FlexibleInstances #-}
 
+-- TODO rename to GtkViewModel
 module GtkMvvm (
 	Model,
 	readModel,
