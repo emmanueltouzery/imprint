@@ -77,6 +77,12 @@ showSettingsWindow builder latestConfig = do
 		liftIO $ setFontSizeForWidget ctxt text textStylePreview
 		renderText text ctxt cTextStyle
 
+
+	settingsOkBtn <- builderGetObject builder castToButton "settingsOk"
+	settingsOkBtn `on` buttonActivated $ do
+		updatedConf <- liftIO $ updateConfFromModel latestConfig displayItemModel
+		saveSettings updatedConf
+
 	windowSetDefaultSize settingsWindow 600 500
 	--prepareTextStylePreview builder latestConfig
 	widgetShowAll settingsWindow

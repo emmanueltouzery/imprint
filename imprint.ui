@@ -532,7 +532,7 @@
             <property name="can_focus">False</property>
             <property name="layout_style">end</property>
             <child>
-              <object class="GtkButton" id="textStyleBtnOk1">
+              <object class="GtkButton" id="settingsOk">
                 <property name="label">gtk-ok</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
@@ -547,7 +547,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkButton" id="textStyleBtnCancel1">
+              <object class="GtkButton" id="settingsCancel">
                 <property name="label">gtk-cancel</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
