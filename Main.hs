@@ -7,10 +7,9 @@ import Graphics.UI.Gtk hiding (styleSet)
 import Graphics.HsExif (parseFileExif, getDateTimeOriginal)
 import Data.Time.Format (formatTime)
 import System.Locale (defaultTimeLocale)
-import Data.AppSettings (GetSetting(..))
 import Data.IORef
+import Control.Monad (liftM)
 
-import TextStylesSettings
 import Settings
 import SettingsWindow
 import FrameRenderer (renderFrame)
@@ -27,8 +26,7 @@ main = do
 	-- Therefore it's a special situation because
 	-- the settings can change anytime.
 	-- in the rest of the app however they'll be static.
-	(settings, gs) <- Settings.readSettings
-	let (GetSetting getSetting) = gs
+	settings <- liftM fst Settings.readSettings
 
 	-- ############ TODO I think i don't need to hold the config in an IORef
 	-- now. I want realtime edit when previewing changes in the OK/Cancel dialog.
@@ -58,15 +56,11 @@ main = do
 	ctxt <- cairoCreateContext Nothing
 	text <- layoutEmpty ctxt
 	text `layoutSetText` formattedDate
-	updateFontFromTextStyle ctxt $ getSelectedTextStyle gs
-
-	let textSizePoints = fromIntegral width * getSetting textSizeFromWidth
-	contextSetFontSize ctxt textSizePoints
 
 	renderWith sur $ do
 		setSourcePixbuf img 0 0
 		paint
-		renderFrame width height text gs
+		renderFrame width height text ctxt $ getDisplayItemsStyles settings
 
 	pbuf <- pixbufNewFromSurface sur 0 0 width height
 	pixbufSave pbuf "newout.jpg" "jpeg" [("quality", "95")]

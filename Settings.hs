@@ -48,25 +48,38 @@ textStyles = ListSetting "textStyles" $ [
 	}
 	]
 
-selectedTextStyleId :: Setting Int
-selectedTextStyleId = Setting "selectedTextStyleId" 1
+data ItemPosition = TopLeft
+	| TopCenter
+	| TopRight
+	| BottomLeft
+	| BottomCenter
+	| BottomRight
+	deriving (Show, Read, Eq)
 
-textSizeFromWidth :: Setting Double
-textSizeFromWidth = Setting "textSizeFromWidth" 0.04
+data DisplayItem = DisplayItem
+	{
+		textStyleId :: Int,
+		textSizeFromWidth :: Double,
+		marginXFromWidth :: Double,
+		marginYFromWidth :: Double,
+		position :: ItemPosition
+	} deriving (Show, Read, Eq)
 
-marginXFromWidth :: Setting Double
-marginXFromWidth = Setting "marginXFromWidth" 0.025
-
-marginYFromWidth :: Setting Double
-marginYFromWidth = Setting "marginYFromWidth" 0.025
+displayItems :: Setting [DisplayItem]
+displayItems = ListSetting "displayItems" $ [
+	DisplayItem {
+		textStyleId = 1,
+		textSizeFromWidth = 0.04,
+		marginXFromWidth = 0.025,
+		marginYFromWidth = 0.025,
+		position = BottomRight
+	}
+	]
 
 getAllSettings :: DefaultConfig
 getAllSettings = getDefaultConfig $ do
-	setting selectedTextStyleId
 	setting textStyles
-	setting textSizeFromWidth
-	setting marginXFromWidth
-	setting marginYFromWidth
+	setting displayItems
 
 readSettings :: IO (Conf, GetSetting)
 readSettings = AppSettings.readSettings (AutoFromAppName appName)

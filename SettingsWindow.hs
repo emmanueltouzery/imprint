@@ -4,18 +4,19 @@ module SettingsWindow where
 import Graphics.UI.Gtk hiding (styleSet)
 import Graphics.Rendering.Cairo hiding (width, height, x)
 import Data.IORef
-import Data.AppSettings (getSetting', Conf, GetSetting(..))
-import Data.List
-import Data.Maybe (fromJust)
+import Data.AppSettings (getSetting', Conf)
 import Control.Monad (liftM)
 
 import TextStylesSettings
 import Settings
-import FrameRenderer (renderFrame)
+import FrameRenderer
+
+-- TODO rename file to SettingsDialog
 
 showSettingsWindow :: Builder -> IORef Conf -> IO ()
 showSettingsWindow builder latestConfig = do
 	ctxt <- cairoCreateContext Nothing -- TODO creating cairo ctxt all over the place...
+	curItemPosition <- newIORef BottomRight
 
 	settingsWindow <- builderGetObject builder castToWindow "settings_window"
 	imageLayout <- builderGetObject builder castToDrawingArea "image_layout"
@@ -25,23 +26,25 @@ showSettingsWindow builder latestConfig = do
 
 	textLayout <- layoutEmpty ctxt
 	textLayout `layoutSetText` "2014-04-01"
-	imageLayout `on` draw $ drawImageLayout imageLayout aspectRatioCombo latestConfig textLayout
+	imageLayout `on` draw $
+		drawImageLayout imageLayout aspectRatioCombo latestConfig textLayout ctxt
 
 	pickTextStyleBtn <- builderGetObject builder castToButton "picktextstylebtn"
 	pickTextStyleBtn `on` buttonActivated $ do
-		showTextStyleListDialog builder latestConfig settingsWindow
+		conf <- readIORef latestConfig
+		itemPosition <- readIORef curItemPosition
+		newConf <- showTextStyleListDialog builder conf itemPosition settingsWindow
+		writeIORef latestConfig newConf
 
 	text <- layoutEmpty ctxt
 	text `layoutSetText` "2014-04-01"
 	textStylePreview <- builderGetObject builder castToDrawingArea "textstylepreview"
 	textStylePreview `on` draw $ do
 		conf <- liftIO $ readIORef latestConfig
-		let cTextStyle = fromJust $ find ((== getSetting' conf selectedTextStyleId) . styleId)
-			$ getSetting' conf textStyles
-		liftIO $ do
-			updateFontFromTextStyle ctxt cTextStyle
-			setFontSizeForWidget ctxt text textStylePreview
-		renderText text cTextStyle
+		itemPosition <- liftIO $ readIORef curItemPosition
+		let cTextStyle = getDisplayItemTextStyle conf itemPosition
+		liftIO $ setFontSizeForWidget ctxt text textStylePreview
+		renderText text ctxt cTextStyle
 
 	windowSetDefaultSize settingsWindow 600 500
 	--prepareTextStylePreview builder latestConfig
@@ -57,8 +60,14 @@ getHeightMultiplier aspectRatioCombo = do
 		0 -> 3/4
 		_ -> 2/3
 
-drawImageLayout :: DrawingArea -> ComboBox -> IORef Conf -> PangoLayout -> Render ()
-drawImageLayout drawingArea aspectRatioCombo latestConfig text = do
+getDisplayItemsStyles :: Conf -> [(DisplayItem, TextStyle)]
+getDisplayItemsStyles conf = zip displayItemsV textStylesV
+	where
+		displayItemsV = getSetting' conf displayItems
+		textStylesV = fmap (getDisplayItemTextStyle conf . position) displayItemsV
+
+drawImageLayout :: DrawingArea -> ComboBox -> IORef Conf -> PangoLayout -> PangoContext -> Render ()
+drawImageLayout drawingArea aspectRatioCombo latestConfig text ctxt = do
 	heightMultiplier <- liftIO $ getHeightMultiplier aspectRatioCombo
 	conf <- liftIO $ readIORef latestConfig
 
@@ -80,7 +89,7 @@ drawImageLayout drawingArea aspectRatioCombo latestConfig text = do
 	save
 	translate 0 top
 
-	renderFrame (floor effectiveW) (floor effectiveH) text (GetSetting $ getSetting' conf)
+	renderFrame (floor effectiveW) (floor effectiveH) text ctxt $ getDisplayItemsStyles conf
 	restore
 	return ()
 

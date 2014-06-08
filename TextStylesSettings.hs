@@ -9,49 +9,76 @@ import Graphics.UI.Gtk hiding (styleSet)
 import Data.Maybe (fromJust, isJust)
 import Data.IORef
 import Control.Monad (when, liftM)
-import Data.AppSettings (getSetting', Conf, setSetting, GetSetting(..))
+import Data.AppSettings (getSetting', Conf, setSetting)
 import Data.List
 import Control.Lens hiding (set)
 
-import Helpers
 import Settings
 import GtkMvvm
+import FrameRenderer
 
 minFontSize :: Int
 minFontSize = 5
 
-getSelectedTextStyle :: GetSetting -> TextStyle
-getSelectedTextStyle (GetSetting getSetting) = case find ((==selectedStyleId) . styleId) allStyles of
+getDisplayItemTextStyle :: Conf -> ItemPosition -> TextStyle
+getDisplayItemTextStyle conf itemPosition = case find ((==selectedStyleId) . styleId) allStyles of
 		Nothing -> error $ "Can't find text style of id " ++ show selectedStyleId
 		Just x -> x
 	where
-		allStyles = getSetting textStyles
-		selectedStyleId = getSetting selectedTextStyleId
+		allStyles = getSetting' conf textStyles
+		selectedStyleId = textStyleId displayItem
+		displayItem = fromJust $ getDisplayItem conf itemPosition
 
-showTextStyleListDialog :: Builder -> IORef Conf -> Window -> IO ()
-showTextStyleListDialog builder latestConfig parent = do
+-- TODO same as getDisplayItemTextStyle return without the maybe
+-- but trigger a error with a debuggable error message if it's not there.
+-- (but in both cases don't use case but some Data.Maybe function)
+getDisplayItem :: Conf -> ItemPosition -> Maybe DisplayItem
+getDisplayItem conf itemPosition = find ((==itemPosition) . position) $ getSetting' conf displayItems
+
+-- here is the reason why we work on ItemPosition and not on DisplayItem...
+-- we are a settings dialog. And so we will modify the display item...
+-- if nothing else we'll change its textStyleId.
+-- And once modified if I search for the item i'll fail to find
+-- it because it was modified.
+-- So I rely on the fact that there is only one display item for
+-- one ItemPosition. So I find the display item by the position
+-- and I don't have to worry whether the item was modified or not,
+-- I know I'll find it.
+showTextStyleListDialog :: Builder -> Conf -> ItemPosition -> Window -> IO Conf
+showTextStyleListDialog builder conf itemPosition parent = do
+	curConfig <- newIORef conf
 	activeItemSvg <- svgNewFromFile "active_item.svg"
 	dialog <- builderGetObject builder castToDialog "dialog1"
 	stylesVbox <- builderGetObject builder castToBox "stylesVbox"
 	containerForeach stylesVbox (\w -> containerRemove stylesVbox w)
-	conf <- readIORef latestConfig
 	textStyleDialogInfo <- prepareTextStyleDialog builder $
-		getSelectedTextStyle (GetSetting $ getSetting' conf)
+		getDisplayItemTextStyle conf itemPosition
 	ctxt <- cairoCreateContext Nothing
 
 	let styles = getSetting' conf textStyles
 	let styleIds = fmap styleId styles
-	let styleGettersSetters = fmap (getStyleGetterSetter stylesVbox latestConfig) styleIds
+	let styleGettersSetters = fmap (getStyleGetterSetter stylesVbox curConfig) styleIds
 
 	textStyleListBtnCancel <- builderGetObject builder castToButton "textStyleListBtnCancel"
-	textStyleListBtnCancel `on` buttonActivated $ widgetHide dialog
+	textStyleListBtnCancel `on` buttonActivated $ do
+		dialogResponse dialog ResponseCancel
+		widgetHide dialog
 
-	mapM_ (uncurry $ vboxAddStyleItem dialog stylesVbox ctxt activeItemSvg textStyleDialogInfo latestConfig) styleGettersSetters
+	textStyleListBtnOk <- builderGetObject builder castToButton "textStyleListBtnOk"
+	textStyleListBtnOk `on` buttonActivated $ do
+		dialogResponse dialog ResponseOk
+		widgetHide dialog
+
+	mapM_ (uncurry $ vboxAddStyleItem dialog stylesVbox ctxt activeItemSvg textStyleDialogInfo curConfig itemPosition) styleGettersSetters
 	windowSetDefaultSize dialog 600 500
 	set dialog [windowTransientFor := parent]
-	dialogRun dialog
+	resp <- dialogRun dialog
 	widgetHide dialog
-	return ()
+	case resp of
+		ResponseOk -> do
+			readIORef curConfig
+		_ -> do
+			return conf -- user pressed cancel
 
 getStyleGetterSetter :: Box -> IORef Conf -> Int -> (Conf->TextStyle, TextStyle -> IO ())
 getStyleGetterSetter stylesVbox latestConfig cStyleId = (getStyleById cStyleId, updateStyle latestConfig stylesVbox cStyleId)
@@ -79,9 +106,10 @@ prepareTextStyleDrawingArea ctxt text drawingArea = do
 
 -- Maybe could use Gtk signals for the styleUpdatedCallback,
 -- but don't know how/whether it's possible.
-vboxAddStyleItem :: Dialog -> Box -> PangoContext -> SVG -> TextStyleDialogInfo -> IORef Conf -> (Conf->TextStyle)
-		-> (TextStyle -> IO ()) -> IO ()
-vboxAddStyleItem parent box ctxt activeItemSvg textStyleDialogInfo latestConfig confTextStyleGetter styleUpdatedCallback = do
+-- TODO too many parameters, and way too long!!!
+vboxAddStyleItem :: Dialog -> Box -> PangoContext -> SVG -> TextStyleDialogInfo -> IORef Conf -> ItemPosition
+		-> (Conf->TextStyle) -> (TextStyle -> IO ()) -> IO ()
+vboxAddStyleItem parent box ctxt activeItemSvg textStyleDialogInfo latestConfig itemPosition confTextStyleGetter styleUpdatedCallback = do
 	text <- layoutEmpty ctxt
 	text `layoutSetText` "2014-04-01"
 
@@ -98,21 +126,20 @@ vboxAddStyleItem parent box ctxt activeItemSvg textStyleDialogInfo latestConfig 
 		conf <- liftIO $ readIORef latestConfig
 		let cTextStyle = confTextStyleGetter conf
 		liftIO $ do
-			updateFontFromTextStyle ctxt cTextStyle
 			setFontSizeForWidget ctxt text drawingArea
-		renderText text cTextStyle
+		renderText text ctxt cTextStyle
 
 	checkbox `on` draw $ do
 		conf <- liftIO $ readIORef latestConfig
 		let cTextStyle = confTextStyleGetter conf
-		let selectedStyleId = getSetting' conf selectedTextStyleId
-		when (selectedStyleId == styleId cTextStyle) $ do
+		let selectedStyleId = getDisplayItemTextStyle conf itemPosition
+		when (selectedStyleId == cTextStyle) $ do
 			translate 0 $ fromIntegral cbYtop
 			svgRender activeItemSvg >> return ()
 			translate 0 $ (-fromIntegral cbYtop)
 
 	let styleSelectCb = do
-		liftIO $ updateConfig latestConfig $ changeSelectedConfig confTextStyleGetter box
+		liftIO $ updateConfig latestConfig $ changeSelectedConfig confTextStyleGetter box itemPosition
 		return True
 
 	widgetAddEvents checkbox [ButtonPressMask, ButtonReleaseMask]
@@ -134,7 +161,7 @@ vboxAddStyleItem parent box ctxt activeItemSvg textStyleDialogInfo latestConfig 
 		Settings.saveSettings newConf
 		writeIORef latestConfig newConf
 		let (styleGet, styleSet) = getStyleGetterSetter box latestConfig $ styleId newStyle
-		vboxAddStyleItem parent box ctxt activeItemSvg textStyleDialogInfo latestConfig styleGet styleSet
+		vboxAddStyleItem parent box ctxt activeItemSvg textStyleDialogInfo latestConfig itemPosition styleGet styleSet
 		
 	containerAdd vbtnBox copyBtn
 	editBtn <- prepareButton stockEdit
@@ -153,22 +180,29 @@ vboxAddStyleItem parent box ctxt activeItemSvg textStyleDialogInfo latestConfig 
 	boxPackStart box hbox PackNatural 0
 	widgetShowAll hbox
 
-changeSelectedConfig :: (Conf->TextStyle) -> Box -> Conf -> IO Conf
-changeSelectedConfig confTextStyleGetter box conf = do
+changeSelectedConfig :: (Conf->TextStyle) -> Box -> ItemPosition -> Conf -> IO Conf
+changeSelectedConfig confTextStyleGetter box itemPosition conf = do
 	let clickedStyleId = styleId $ confTextStyleGetter conf
-	let newConf = setSetting conf selectedTextStyleId clickedStyleId
+	let displayItemsV = getSetting' conf displayItems
+	let displayItem = fromJust $ find ((==itemPosition) . position) displayItemsV
+	-- doesn't matter if we change the order, could be a hash
+	-- key = item position, value = the rest.
+	let newDisplayItems = delete displayItem displayItemsV ++ [displayItem { textStyleId = clickedStyleId }]
+	let newConf = setSetting conf displayItems newDisplayItems
 	widgetQueueDraw box
 	return newConf
 
 removeTextStyle :: Dialog -> (Conf->TextStyle) -> Box -> Conf -> IO Conf
 removeTextStyle parent confTextStyleGetter box conf = do
 	let styleIdToRemove = styleId $ confTextStyleGetter conf
-	let cStyles = getSetting' conf textStyles
-	if styleIdToRemove == getSetting' conf selectedTextStyleId
+	let displayItemsV = getSetting' conf displayItems
+	let usedTextStyleIds = fmap textStyleId displayItemsV
+	if styleIdToRemove `elem` usedTextStyleIds
 		then do
 			displayError parent "Cannot delete the selected text style"
 			return conf
 		else do
+			let cStyles = getSetting' conf textStyles
 			let styleIdx = fromJust $ findIndex ((==styleIdToRemove) . styleId) cStyles
 			let newConf = setSetting conf textStyles $ filter ((/=styleIdToRemove) . styleId) cStyles
 			boxWidgets <- containerGetChildren box
@@ -220,7 +254,7 @@ prepareTextStyleDialog builder textStyle = do
 	prepareTextStyleDrawingArea ctxt text textPreview
 	textPreview `on` draw $ do
 		cTextStyle <- liftIO $ readModel textStyleModel
-		renderText text cTextStyle
+		renderText text ctxt cTextStyle
 
 	builderGetObject builder castToColorButton "fillColor" >>= bindModel textStyleModel textFillL
 	builderGetObject builder castToColorButton "strokeColor" >>= bindModel textStyleModel textStrokeL
@@ -236,8 +270,7 @@ prepareTextStyleDialog builder textStyle = do
 	-- TODO we're changing the font when any setting changes.
 	-- no need to recompute the font when the colors are changed
 	-- for instance.
-	addModelObserver textStyleModel $ \cTextStyle -> do
-		updateFontFromTextStyle ctxt cTextStyle
+	addModelObserver textStyleModel $ \_ -> do
 		setFontSizeForWidget ctxt text textPreview
 		-- the following however is always needed.
 		widgetQueueDraw textPreview
@@ -267,12 +300,6 @@ showTextStyleDialog parent (TextStyleDialogInfo curTextStyle textStyleBtnOk dial
 	widgetHide dialog
 	return ()
 
-contextSetFontSize :: PangoContext -> Double -> IO ()
-contextSetFontSize ctxt fontSize = do
-	font <- contextGetFontDescription ctxt
-	fontDescriptionSetSize font fontSize
-	contextSetFontDescription ctxt font
-
 setFontSizeForWidget :: WidgetClass a => PangoContext -> PangoLayout -> a -> IO ()
 setFontSizeForWidget ctxt text widget = liftIO $ do
 	w <- widgetGetAllocatedWidth widget
@@ -290,27 +317,9 @@ setFontSizeForBoundingBox ctxt text fontSize maxWidth maxHeight = do
 		then setFontSizeForBoundingBox ctxt text (fontSize+1) maxWidth maxHeight
 		else contextSetFontSize ctxt $ fromIntegral $ fontSize-1
 
-updateFontFromTextStyle :: PangoContext -> TextStyle -> IO ()
-updateFontFromTextStyle ctxt textStyle = do
-	font <- case fontName textStyle of
-		Nothing -> contextGetFontDescription ctxt
-		Just name -> liftIO $ fontDescriptionFromString name
-	--liftIO $ layoutSetFontDescription text (Just fontDesc)
-	contextSetFontDescription ctxt font
-
 updateConfig :: IORef Conf -> (Conf -> IO Conf) -> IO ()
 updateConfig latestConfig newConfigMaker = do
 	conf <- readIORef latestConfig
 	conf' <- newConfigMaker conf
 	saveSettings conf'
 	writeIORef latestConfig conf'
-
-renderText :: PangoLayout -> TextStyle -> Render ()
-renderText text textStyle = do
-	layoutPath text
-	setSourceRGBA `applyColor` textFill textStyle
-	fillPreserve
-	setSourceRGBA `applyColor` textStroke textStyle
-	(Rectangle _ _ _ rHeight) <- liftM snd $ liftIO (layoutGetPixelExtents text)
-	setLineWidth $ fromIntegral rHeight * strokeHeightRatio textStyle
-	strokePreserve
