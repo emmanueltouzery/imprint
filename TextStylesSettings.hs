@@ -260,9 +260,17 @@ prepareTextStyleDialog builder textStyle = do
 	builderGetObject builder castToColorButton "strokeColor" >>= bindModel textStyleModel textStrokeL
 
 	borderScale <- builderGetObject builder castToScale "borderScale"
-	borderAdjustment <- adjustmentNew (strokeHeightRatio textStyle *100) 0 11 1 1 1
-	rangeSetAdjustment borderScale borderAdjustment
-	bindModel textStyleModel strokeHeightRatioL borderAdjustment
+	let rangeBindInfo = RangeBindInfo
+		{
+			range = borderScale,
+			startV = strokeHeightRatio textStyle *100,
+			lowerV = 0,
+			upperV = 22,
+			stepIncr = 2,
+			pageIncr = 1,
+			pageSize = 1
+		}
+	bindModel textStyleModel strokeHeightRatioL rangeBindInfo
 
 	fontButton <- builderGetObject builder castToFontButton "fontButton"
 	bindModel textStyleModel fontNameL fontButton

@@ -7,7 +7,8 @@ module GtkViewModel (
 	modifyModel,
 	Bindable,
 	bindModel,
-	addModelObserver
+	addModelObserver,
+	RangeBindInfo(..)
 ) where
 
 import Data.IORef
@@ -45,6 +46,8 @@ addModelObserver :: Model a -> (a -> IO ()) -> IO ()
 addModelObserver model cb = modifyIORef (changeCallbacks model) $ (cb:)
 
 class Bindable b c where
+	initBind :: b -> c -> IO ()
+	initBind _ _ = return ()
 	setWidgetValue :: b -> c -> IO ()
 	registerWidgetListener :: b -> (c -> IO ()) -> IO ()
 
@@ -53,6 +56,7 @@ class Bindable b c where
 bindModel :: Bindable b c => Model a -> (Lens' a c) -> b -> IO ()
 bindModel model memberLens bindable = do
 	let reader = \x -> x ^. memberLens
+	readIORef (contents model) >>= \v -> initBind bindable $ reader v
 	modifyIORef (changeCallbacks model) $ (setWidgetValue bindable . reader:)
 	readIORef (contents model) >>= setWidgetValue bindable . reader
 	registerWidgetListener bindable $ \newV ->
@@ -76,9 +80,27 @@ instance Bindable ColorButton ColorRgba where
 			cb $ readGtkColorAlpha gtkColor alpha
 		>> return ()
 
-instance Bindable Adjustment Double where
-	setWidgetValue w v = adjustmentSetValue w $ v*100
+data RangeBindInfo a = RangeBindInfo
+	{
+		range :: a,
+		startV :: Double,
+		lowerV :: Double,
+		upperV :: Double,
+		stepIncr :: Double,
+		pageIncr :: Double,
+		pageSize :: Double
+	}
+
+instance (RangeClass a) => Bindable (RangeBindInfo a) Double where
+	initBind bindInfo _ = do
+		adj <- adjustmentNew (startV bindInfo) (lowerV bindInfo) (upperV bindInfo)
+			(stepIncr bindInfo) (pageIncr bindInfo) (pageSize bindInfo)
+		rangeSetAdjustment (range bindInfo) adj
+	setWidgetValue w v = do
+		adj <- rangeGetAdjustment $ range w
+		adjustmentSetValue adj $ v*100
 	registerWidgetListener w cb = do
-		onValueChanged w $ do
-			liftM (/100) (adjustmentGetValue w) >>= cb
+		adj <- rangeGetAdjustment $ range w
+		onValueChanged adj $ do
+			liftM (/100) (adjustmentGetValue adj) >>= cb
 		>> return ()
