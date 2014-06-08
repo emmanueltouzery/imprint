@@ -14,7 +14,7 @@ import Data.List
 import Control.Lens hiding (set)
 
 import Settings
-import GtkMvvm
+import GtkViewModel
 import FrameRenderer
 
 minFontSize :: Int
