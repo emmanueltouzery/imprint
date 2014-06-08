@@ -53,7 +53,7 @@ showSettingsWindow builder latestConfig = do
 		return ()
 
 	textSizeScale <- builderGetObject builder castToScale "textSizeScale"
-	let rangeBindInfo = RangeBindInfo
+	let scaleRangeBindInfo = RangeBindInfo
 		{
 			range = textSizeScale,
 			startV = textSizeFromWidth startDisplayItem *100,
@@ -63,7 +63,33 @@ showSettingsWindow builder latestConfig = do
 			pageIncr = 1,
 			pageSize = 1
 		}
-	bindModel displayItemModel textSizeFromWidthL rangeBindInfo
+	bindModel displayItemModel textSizeFromWidthL scaleRangeBindInfo
+
+	horizontalMarginScale <- builderGetObject builder castToScale "horizontalMarginScale"
+	let horMarginRangeBindInfo = RangeBindInfo
+		{
+			range = horizontalMarginScale,
+			startV = marginXFromWidth startDisplayItem *100,
+			lowerV = 0,
+			upperV = 22,
+			stepIncr = 2,
+			pageIncr = 1,
+			pageSize = 1
+		}
+	bindModel displayItemModel marginXFromWidthL horMarginRangeBindInfo
+
+	verticalMarginScale <- builderGetObject builder castToScale "verticalMarginScale"
+	let verMarginRangeBindInfo = RangeBindInfo
+		{
+			range = verticalMarginScale,
+			startV = marginYFromWidth startDisplayItem *100,
+			lowerV = 0,
+			upperV = 22,
+			stepIncr = 2,
+			pageIncr = 1,
+			pageSize = 1
+		}
+	bindModel displayItemModel marginYFromWidthL verMarginRangeBindInfo
 
 	addModelObserver displayItemModel $ \_ -> widgetQueueDraw imageLayout
 
