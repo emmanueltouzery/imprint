@@ -6,7 +6,6 @@ import Graphics.Rendering.Cairo hiding (width, height, x)
 import Data.IORef
 import Data.AppSettings (getSetting', setSetting, Conf)
 import Control.Monad (liftM)
-import Data.Maybe (fromJust)
 import Control.Lens
 
 import TextStylesSettings
@@ -20,13 +19,9 @@ showSettingsWindow :: Builder -> IORef Conf -> IO ()
 showSettingsWindow builder latestConfig = do
 	ctxt <- cairoCreateContext Nothing -- TODO creating cairo ctxt all over the place...
 
-	-- TODO the next two lines are probably useless, since i have
-	-- the displayItemModel and i can read its position?
-	let startItemPosition = BottomRight
-	curItemPosition <- newIORef startItemPosition
-
 	startConf <- readIORef latestConfig
-	let startDisplayItem = fromJust $ getDisplayItem startConf startItemPosition
+	-- TODO create bottom-right if there is no display item at all
+	let startDisplayItem = head $ getSetting' startConf displayItems
 	displayItemModel <- makeModel startDisplayItem
 
 	settingsWindow <- builderGetObject builder castToWindow "settings_window"
@@ -41,15 +36,18 @@ showSettingsWindow builder latestConfig = do
 		updatedConf <- liftIO $ updateConfFromModel latestConfig displayItemModel
 		drawImageLayout imageLayout aspectRatioCombo updatedConf textLayout ctxt
 
+	textStylePreview <- builderGetObject builder castToDrawingArea "textstylepreview"
+
 	pickTextStyleBtn <- builderGetObject builder castToButton "picktextstylebtn"
 	pickTextStyleBtn `on` buttonActivated $ do
 		conf <- readIORef latestConfig
-		itemPosition <- readIORef curItemPosition
+		itemPosition <- liftM position $ readModel displayItemModel
 		newConf <- showTextStyleListDialog builder conf itemPosition settingsWindow
 		writeIORef latestConfig newConf
 		-- in case the user changed the text style
 		-- for the model, update the model.
 		modifyModel displayItemModel (textStyleIdL .~ styleId (getDisplayItemTextStyle newConf itemPosition))
+		widgetQueueDraw textStylePreview
 		return ()
 
 	textSizeScale <- builderGetObject builder castToScale "textSizeScale"
@@ -95,14 +93,12 @@ showSettingsWindow builder latestConfig = do
 
 	text <- layoutEmpty ctxt
 	text `layoutSetText` "2014-04-01"
-	textStylePreview <- builderGetObject builder castToDrawingArea "textstylepreview"
 	textStylePreview `on` draw $ do
 		conf <- liftIO $ readIORef latestConfig
-		itemPosition <- liftIO $ readIORef curItemPosition
-		let cTextStyle = getDisplayItemTextStyle conf itemPosition
+		curDisplayItem <- liftIO $ readModel displayItemModel
+		let cTextStyle = getDisplayItemTextStyle conf $ position curDisplayItem
 		liftIO $ setFontSizeForWidget ctxt text textStylePreview
 		renderText text ctxt cTextStyle
-
 
 	settingsOkBtn <- builderGetObject builder castToButton "settingsOk"
 	settingsOkBtn `on` buttonActivated $ do
