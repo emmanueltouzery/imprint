@@ -6,7 +6,7 @@ import Data.AppSettings as AppSettings
 import Control.Lens hiding (Setting, setting)
 
 appName :: String
-appName = "picdate"
+appName = "imprint"
 
 type ColorRgba = (Double, Double, Double, Double)
 
