@@ -16,6 +16,7 @@ import Control.Lens hiding (set)
 import Settings
 import GtkViewModel
 import FrameRenderer
+import Helpers
 
 minFontSize :: Int
 minFontSize = 5
@@ -171,7 +172,7 @@ vboxAddStyleItem parent box ctxt activeItemSvg textStyleDialogInfo latestConfig 
  	containerAdd vbtnBox editBtn
 	deleteBtn <- prepareButton stockDelete
 	deleteBtn `on` buttonActivated $ do
-		userConfirms <- userConfirmDelete parent
+		userConfirms <- dialogYesNo parent "Sure to delete the text style?"
 		when userConfirms $ updateConfig latestConfig $ removeTextStyle parent confTextStyleGetter box
 		
 	containerAdd vbtnBox deleteBtn
@@ -208,19 +209,6 @@ removeTextStyle parent confTextStyleGetter box conf = do
 			boxWidgets <- containerGetChildren box
 			containerRemove box $ boxWidgets !! styleIdx
 			return newConf
-
-displayError :: WindowClass a => a -> String -> IO ()
-displayError parent msg = do
-	dialog <- messageDialogNew (Just $ toWindow parent) [DialogModal] MessageError ButtonsOk msg
-	dialogRun dialog
-	widgetDestroy dialog
-
-userConfirmDelete :: WindowClass a => a -> IO Bool
-userConfirmDelete parent = do
-	dialog <- messageDialogNew (Just $ toWindow parent) [DialogModal] MessageWarning ButtonsYesNo "Sure to delete the text style?"
-	resp <- dialogRun dialog
-	widgetDestroy dialog
-	return $ resp == ResponseYes
 
 getNewStyleId :: Conf -> Int
 getNewStyleId conf = 1 + maximum' existingIds
@@ -263,7 +251,6 @@ prepareTextStyleDialog builder textStyle = do
 	let rangeBindInfo = RangeBindInfo
 		{
 			range = borderScale,
-			startV = strokeHeightRatio textStyle *100,
 			lowerV = 0,
 			upperV = 22,
 			stepIncr = 2,

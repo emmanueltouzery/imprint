@@ -26,3 +26,18 @@ buttonSetColor :: ColorButtonClass self => self -> (Double, Double, Double, Doub
 buttonSetColor btn color@(_, _, _, a) = do
 	colorButtonSetColor btn $ getGtkColorNoAlpha color
 	colorButtonSetAlpha btn $ convertChannel a
+
+displayError :: WindowClass a => a -> String -> IO ()
+displayError parent msg = do
+	dialog <- messageDialogNew (Just $ toWindow parent) [DialogModal] MessageError ButtonsOk msg
+	dialogRun dialog >> widgetDestroy dialog
+
+dialogYesNo :: WindowClass a => a -> String -> IO Bool
+dialogYesNo parent msg = do
+	dialog <- messageDialogNew (Just $ toWindow parent) [DialogModal] MessageWarning ButtonsYesNo msg
+	resp <- dialogRun dialog
+	widgetDestroy dialog
+	return $ resp == ResponseYes
+
+whenM :: Monad m => m Bool -> m () -> m ()
+whenM test action = test >>= \t -> if t then action else return ()

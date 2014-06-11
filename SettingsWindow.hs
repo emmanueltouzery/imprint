@@ -5,13 +5,16 @@ import Graphics.UI.Gtk hiding (styleSet)
 import Graphics.Rendering.Cairo hiding (width, height, x)
 import Data.IORef
 import Data.AppSettings (getSetting', setSetting, Conf)
-import Control.Monad (liftM)
+import Control.Monad (liftM, when)
 import Control.Lens
+import Data.Maybe (fromJust)
+import Data.List
 
 import TextStylesSettings
 import Settings
 import FrameRenderer
 import GtkViewModel
+import Helpers
 
 -- TODO make it a dialog?
 
@@ -20,9 +23,10 @@ showSettingsWindow builder latestConfig = do
 	ctxt <- cairoCreateContext Nothing -- TODO creating cairo ctxt all over the place...
 
 	startConf <- readIORef latestConfig
+	displayItemsModel <- makeListModel $ getSetting' startConf displayItems
+	let getCurItem = liftM fromJust . listModelGetCurrentItem
+
 	-- TODO create bottom-right if there is no display item at all
-	let startDisplayItem = head $ getSetting' startConf displayItems
-	displayItemModel <- makeModel startDisplayItem
 
 	settingsWindow <- builderGetObject builder castToWindow "settings_window"
 	imageLayout <- builderGetObject builder castToDrawingArea "image_layout"
@@ -33,7 +37,7 @@ showSettingsWindow builder latestConfig = do
 	textLayout <- layoutEmpty ctxt
 	textLayout `layoutSetText` "2014-04-01"
 	imageLayout `on` draw $ do
-		updatedConf <- liftIO $ updateConfFromModel latestConfig displayItemModel
+		updatedConf <- liftIO $ updateConfFromModel latestConfig displayItemsModel
 		drawImageLayout imageLayout aspectRatioCombo updatedConf textLayout ctxt
 
 	textStylePreview <- builderGetObject builder castToDrawingArea "textstylepreview"
@@ -41,6 +45,7 @@ showSettingsWindow builder latestConfig = do
 	pickTextStyleBtn <- builderGetObject builder castToButton "picktextstylebtn"
 	pickTextStyleBtn `on` buttonActivated $ do
 		conf <- readIORef latestConfig
+		displayItemModel <- getCurItem displayItemsModel
 		itemPosition <- liftM position $ readModel displayItemModel
 		newConf <- showTextStyleListDialog builder conf itemPosition settingsWindow
 		writeIORef latestConfig newConf
@@ -54,68 +59,114 @@ showSettingsWindow builder latestConfig = do
 	let scaleRangeBindInfo = RangeBindInfo
 		{
 			range = textSizeScale,
-			startV = textSizeFromWidth startDisplayItem *100,
 			lowerV = 0,
 			upperV = 22,
 			stepIncr = 2,
 			pageIncr = 1,
 			pageSize = 1
 		}
-	bindModel displayItemModel textSizeFromWidthL scaleRangeBindInfo
 
 	horizontalMarginScale <- builderGetObject builder castToScale "horizontalMarginScale"
 	let horMarginRangeBindInfo = RangeBindInfo
 		{
 			range = horizontalMarginScale,
-			startV = marginXFromWidth startDisplayItem *100,
 			lowerV = 0,
 			upperV = 22,
 			stepIncr = 2,
 			pageIncr = 1,
 			pageSize = 1
 		}
-	bindModel displayItemModel marginXFromWidthL horMarginRangeBindInfo
 
 	verticalMarginScale <- builderGetObject builder castToScale "verticalMarginScale"
 	let verMarginRangeBindInfo = RangeBindInfo
 		{
 			range = verticalMarginScale,
-			startV = marginYFromWidth startDisplayItem *100,
 			lowerV = 0,
 			upperV = 22,
 			stepIncr = 2,
 			pageIncr = 1,
 			pageSize = 1
 		}
-	bindModel displayItemModel marginYFromWidthL verMarginRangeBindInfo
-
-	addModelObserver displayItemModel $ \_ -> widgetQueueDraw imageLayout
 
 	text <- layoutEmpty ctxt
 	text `layoutSetText` "2014-04-01"
 	textStylePreview `on` draw $ do
 		conf <- liftIO $ readIORef latestConfig
-		curDisplayItem <- liftIO $ readModel displayItemModel
+		curDisplayItem <- liftIO $ getCurItem displayItemsModel >>= readModel
 		let cTextStyle = getDisplayItemTextStyle conf $ position curDisplayItem
 		liftIO $ setFontSizeForWidget ctxt text textStylePreview
 		renderText text ctxt cTextStyle
 
+	addListModelCurrentItemObserver displayItemsModel $ \currentDisplayItemModel -> do
+		putStrLn "current display item changed!"
+		bindModel currentDisplayItemModel marginXFromWidthL horMarginRangeBindInfo
+		bindModel currentDisplayItemModel textSizeFromWidthL scaleRangeBindInfo
+		bindModel currentDisplayItemModel marginYFromWidthL verMarginRangeBindInfo
+		widgetQueueDraw imageLayout
+		widgetQueueDraw textStylePreview
+
+	readListModel displayItemsModel >>= listModelSetCurrentItem displayItemsModel . head
+
+	displayItemPositionCombo <- builderGetObject builder castToComboBox "displayItemPositionCombo"
+	liftM position (getCurItem displayItemsModel >>= readModel) >>= comboBoxSelectPosition displayItemPositionCombo
+	displayItemPositionCombo `on` changed $
+		changeDisplayItemPosition settingsWindow displayItemPositionCombo displayItemsModel
+
 	settingsOkBtn <- builderGetObject builder castToButton "settingsOk"
 	settingsOkBtn `on` buttonActivated $ do
-		updatedConf <- liftIO $ updateConfFromModel latestConfig displayItemModel
+		updatedConf <- liftIO $ updateConfFromModel latestConfig displayItemsModel
 		saveSettings updatedConf
 
 	windowSetDefaultSize settingsWindow 600 500
 	--prepareTextStylePreview builder latestConfig
 	widgetShowAll settingsWindow
 
-updateConfFromModel :: IORef Conf -> Model DisplayItem -> IO Conf
-updateConfFromModel latestConfig displayItemModel = do
+comboIndexes :: [(Int, ItemPosition)]
+comboIndexes = [(0, TopLeft), (1, TopCenter), (2, TopRight),
+		(3, BottomLeft), (4, BottomCenter), (5, BottomRight)]
+
+changeDisplayItemPosition :: Window -> ComboBox -> ListModel DisplayItem -> IO ()
+changeDisplayItemPosition parent displayItemPositionCombo displayItemsModel = do
+	selectedPosition <- comboBoxGetPosition displayItemPositionCombo
+	itemsModels <- readListModel displayItemsModel
+	items <- mapM readModel itemsModels
+	case find ((==selectedPosition) . position . snd) (zip itemsModels items) of
+		Nothing -> do
+			isCreate <- offerCreate parent selectedPosition displayItemsModel
+			when (not isCreate) $ do
+				displayItem <- listModelGetCurrentItem displayItemsModel >>= readModel . fromJust
+				comboBoxSelectPosition displayItemPositionCombo $ position displayItem
+		Just (itemModel, _) -> listModelSetCurrentItem displayItemsModel itemModel
+
+comboBoxGetPosition :: ComboBox -> IO ItemPosition
+comboBoxGetPosition combo = do
+	comboPosition <- comboBoxGetActive combo 
+	case find ((==comboPosition) . fst) comboIndexes of
+		Nothing -> error $ "got index " ++ show comboPosition ++ " from the item position combo!?"
+		Just (_, pos) -> return pos
+
+comboBoxSelectPosition :: ComboBox -> ItemPosition -> IO ()
+comboBoxSelectPosition combo itemPosition = case find ((==itemPosition) . snd) comboIndexes of
+	Nothing -> error $ "No combobox entry for position " ++ show itemPosition
+	Just (idx, _) -> comboBoxSetActive combo idx
+
+offerCreate :: Window -> ItemPosition -> ListModel DisplayItem -> IO Bool
+offerCreate parent itemPosition displayItemsModel = do
+	isCreate <- dialogYesNo parent "There is no item to display at that position. Create one?"
+	if isCreate
+		then do
+			displayItemTemplate <- listModelGetCurrentItem displayItemsModel >>= readModel . fromJust
+			newDisplayItem <- makeModel $ displayItemTemplate { position = itemPosition }
+			listModelAddItem displayItemsModel newDisplayItem
+			listModelSetCurrentItem displayItemsModel newDisplayItem
+			return True
+		else return False
+
+updateConfFromModel :: IORef Conf -> ListModel DisplayItem -> IO Conf
+updateConfFromModel latestConfig displayItemsModel = do
 	conf <- readIORef latestConfig
-	curDisplayItem <- liftIO $ readModel displayItemModel
-	let curPos = position curDisplayItem
-	let updatedDisplayItems = curDisplayItem : filter ((/=curPos) . position) (getSetting' conf displayItems)
-	return $ setSetting conf displayItems updatedDisplayItems
+	curDisplayItems <- liftIO $ readListModel displayItemsModel >>= mapM readModel
+	return $ setSetting conf displayItems curDisplayItems
 
 data AspectRatio = FourThree
 	| ThreeTwo

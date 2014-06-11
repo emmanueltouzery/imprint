@@ -5,6 +5,16 @@ module GtkViewModel (
 	readModel,
 	makeModel,
 	modifyModel,
+	ListModel,
+	readListModel,
+	makeListModel,
+	addListModelAddObserver,
+	addListModelRemoveObserver,
+	addListModelCurrentItemObserver,
+	listModelAddItem,
+	listModelRemoveItem,
+	listModelSetCurrentItem,
+	listModelGetCurrentItem,
 	Bindable,
 	bindModel,
 	addModelObserver,
@@ -14,7 +24,8 @@ module GtkViewModel (
 import Data.IORef
 import Control.Lens
 import Graphics.UI.Gtk
-import Control.Monad (liftM)
+import Control.Monad (liftM, when)
+import Data.List
 
 import Helpers
 import Settings (ColorRgba)
@@ -23,6 +34,17 @@ data Model a = Model
 	{
 		contents :: IORef a,
 		changeCallbacks :: IORef [a -> IO ()]
+	}
+instance Eq (Model a) where
+	a == b = contents a == contents b
+
+data ListModel a = ListModel
+	{
+		items :: IORef [Model a],
+		addedCallbacks :: IORef [Model a -> IO()],
+		removedCallbacks :: IORef [Model a -> IO()],
+		currentItem :: IORef (Maybe (Model a)),
+		currentItemCallbacks :: IORef [Model a -> IO()]
 	}
 
 modifyModel :: Model a -> (a->a) -> IO (Model a)
@@ -42,8 +64,57 @@ makeModel v = do
 	bindings <- newIORef []
 	return $ Model value bindings
 
+makeListModel :: [a] -> IO (ListModel a)
+makeListModel listItems = do
+	itemsModel <- mapM makeModel listItems >>= newIORef
+	addedCb <- newIORef []
+	removedCb <- newIORef []
+	curItem <- newIORef Nothing
+	curItemCb <- newIORef []
+	return $ ListModel itemsModel addedCb removedCb curItem curItemCb
+
+readListModel :: ListModel a -> IO [Model a]
+readListModel = readIORef . items
+
+-- TODO code duplication in next 3 functions
+addListModelAddObserver :: Eq a => ListModel a -> (Model a -> IO()) -> IO ()
+addListModelAddObserver listModel cb = modifyIORef (addedCallbacks listModel) (cb:)
+
+addListModelRemoveObserver :: Eq a => ListModel a -> (Model a -> IO()) -> IO ()
+addListModelRemoveObserver listModel cb = modifyIORef (removedCallbacks listModel) (cb:)
+
+addListModelCurrentItemObserver :: ListModel a -> (Model a -> IO()) -> IO ()
+addListModelCurrentItemObserver listModel cb = modifyIORef (currentItemCallbacks listModel) (cb:)
+
+-- TODO code duplication in next 3 functions
+listModelRemoveItem :: Eq a => ListModel a -> Model a -> IO ()
+listModelRemoveItem listModel itemModel = do
+	curItem <- readIORef $ currentItem listModel
+	when (curItem == Just itemModel) $
+		-- removing the current item!
+		modifyIORef (currentItem listModel) $ const Nothing
+	modifyIORef (items listModel) $ filter ((/=contents itemModel) . contents)
+	readIORef (removedCallbacks listModel) >>= mapM (flip ($) itemModel) >> return ()
+
+listModelAddItem :: ListModel a -> Model a -> IO ()
+listModelAddItem listModel itemModel = do
+	modifyIORef (items listModel) (itemModel:)
+	readIORef (addedCallbacks listModel) >>= mapM (flip ($) itemModel) >> return ()
+
+listModelSetCurrentItem :: ListModel a -> Model a -> IO ()
+listModelSetCurrentItem listModel item = do
+	list <- readIORef (items listModel)
+	case find (==item) list of
+		x@(Just _) -> do
+			modifyIORef (currentItem listModel) $ const x
+			readIORef (currentItemCallbacks listModel) >>= mapM (flip ($) item) >> return ()
+		Nothing -> error "listModelSetCurrentItem: item not in list!"
+
+listModelGetCurrentItem :: ListModel a -> IO (Maybe (Model a))
+listModelGetCurrentItem listModel = readIORef (currentItem listModel)
+
 addModelObserver :: Model a -> (a -> IO ()) -> IO ()
-addModelObserver model cb = modifyIORef (changeCallbacks model) $ (cb:)
+addModelObserver model cb = modifyIORef (changeCallbacks model) (cb:)
 
 class Bindable b c where
 	initBind :: b -> c -> IO ()
@@ -83,7 +154,6 @@ instance Bindable ColorButton ColorRgba where
 data RangeBindInfo a = RangeBindInfo
 	{
 		range :: a,
-		startV :: Double,
 		lowerV :: Double,
 		upperV :: Double,
 		stepIncr :: Double,
@@ -93,7 +163,7 @@ data RangeBindInfo a = RangeBindInfo
 
 instance (RangeClass a) => Bindable (RangeBindInfo a) Double where
 	initBind bindInfo _ = do
-		adj <- adjustmentNew (startV bindInfo) (lowerV bindInfo) (upperV bindInfo)
+		adj <- adjustmentNew (lowerV bindInfo) (lowerV bindInfo) (upperV bindInfo)
 			(stepIncr bindInfo) (pageIncr bindInfo) (pageSize bindInfo)
 		rangeSetAdjustment (range bindInfo) adj
 	setWidgetValue w v = do
