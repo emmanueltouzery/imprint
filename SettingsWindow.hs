@@ -178,7 +178,9 @@ getDisplayItemsStyles :: Conf -> [(DisplayItem, TextStyle)]
 getDisplayItemsStyles conf = zip displayItemsV textStylesV
 	where
 		displayItemsV = getSetting' conf displayItems
-		textStylesV = fmap (getDisplayItemTextStyle conf . position) displayItemsV
+		allTextStylesV = getSetting' conf textStyles
+		textStyleById sId = find ((==sId) . styleId) allTextStylesV
+		textStylesV = fmap (fromJust . textStyleById  . textStyleId) displayItemsV
 
 drawImageLayout :: DrawingArea -> ComboBox -> Conf -> PangoLayout -> PangoContext -> Render ()
 drawImageLayout drawingArea aspectRatioCombo conf text ctxt = do
