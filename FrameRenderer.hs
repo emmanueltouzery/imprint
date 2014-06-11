@@ -21,8 +21,18 @@ renderDisplayItem width height text ctxt displayItem textStyle = do
 	-- before already to get the right font metrics...
 	liftIO $ updateFontFromTextStyle ctxt textStyle
 	(Rectangle _ _ rWidth rHeight) <- liftM snd $ liftIO (layoutGetPixelExtents text)
-	moveTo (fromIntegral $ width - rWidth - marginX)
-		(fromIntegral $ height - rHeight - marginY)
+	let xLeft = fromIntegral marginX
+	let xCenter = fromIntegral $ width - rWidth `mod` 2
+	let xRight = fromIntegral $ width - rWidth - marginX
+	let yTop = fromIntegral marginY
+	let yBottom = fromIntegral $ height - rHeight - marginY
+	case position displayItem of
+		TopLeft -> moveTo xLeft yTop
+		TopCenter -> moveTo xCenter yTop
+		TopRight -> moveTo xRight yTop
+		BottomLeft -> moveTo xLeft yBottom
+		BottomCenter -> moveTo xCenter yBottom
+		BottomRight -> moveTo xRight yBottom
 	renderText text ctxt textStyle
 	return ()
 
