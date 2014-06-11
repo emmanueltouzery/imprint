@@ -78,15 +78,7 @@ showSettingsWindow builder latestConfig = do
 		}
 
 	verticalMarginScale <- builderGetObject builder castToScale "verticalMarginScale"
-	let verMarginRangeBindInfo = RangeBindInfo
-		{
-			range = verticalMarginScale,
-			lowerV = 0,
-			upperV = 22,
-			stepIncr = 2,
-			pageIncr = 1,
-			pageSize = 1
-		}
+	let verMarginRangeBindInfo = horMarginRangeBindInfo { range = verticalMarginScale }
 
 	text <- layoutEmpty ctxt
 	text `layoutSetText` "2014-04-01"
