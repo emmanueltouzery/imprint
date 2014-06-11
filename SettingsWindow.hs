@@ -96,6 +96,10 @@ showSettingsWindow builder latestConfig = do
 		bindModel currentDisplayItemModel marginYFromWidthL verMarginRangeBindInfo
 		widgetQueueDraw imageLayout
 		widgetQueueDraw textStylePreview
+		-- this is so that we redraw when the current item is modified.
+		addModelObserver currentDisplayItemModel $ \_ -> do
+			widgetQueueDraw imageLayout
+			widgetQueueDraw textStylePreview
 
 	readListModel displayItemsModel >>= listModelSetCurrentItem displayItemsModel . head
 
