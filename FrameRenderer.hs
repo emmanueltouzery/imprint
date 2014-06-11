@@ -45,7 +45,7 @@ renderText text ctxt textStyle = do
 	setSourceRGBA `applyColor` textStroke textStyle
 	(Rectangle _ _ _ rHeight) <- liftM snd $ liftIO (layoutGetPixelExtents text)
 	setLineWidth $ fromIntegral rHeight * strokeHeightRatio textStyle
-	strokePreserve
+	stroke
 
 updateFontFromTextStyle :: PangoContext -> TextStyle -> IO ()
 updateFontFromTextStyle ctxt textStyle = do
