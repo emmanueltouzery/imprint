@@ -103,7 +103,7 @@ showSettingsWindow builder latestConfig = do
 
 	settingsOkBtn <- builderGetObject builder castToButton "settingsOk"
 	settingsOkBtn `on` buttonActivated $ do
-		updatedConf <- liftIO $ updateConfFromModel latestConfig displayItemsModel
+		updatedConf <- liftIO $ updateConfFromModel latestConfig displayItemsModel textStylesModel
 		saveSettings updatedConf
 
 	windowSetDefaultSize settingsWindow 600 500
@@ -151,11 +151,14 @@ offerCreate parent itemPosition displayItemsModel = do
 			return True
 		else return False
 
-updateConfFromModel :: IORef Conf -> ListModel DisplayItem -> IO Conf
-updateConfFromModel latestConfig displayItemsModel = do
+updateConfFromModel :: IORef Conf -> ListModel DisplayItem -> ListModel TextStyle -> IO Conf
+updateConfFromModel latestConfig displayItemsModel textStylesModel = do
 	conf <- readIORef latestConfig
 	curDisplayItems <- liftIO $ readListModel displayItemsModel >>= mapM readModel
-	return $ setSetting conf displayItems curDisplayItems
+	let conf1 = setSetting conf displayItems curDisplayItems
+	curTextStyles <- liftIO $ readListModel textStylesModel >>= mapM readModel
+	let conf2 = setSetting conf1 textStyles curTextStyles
+	return conf2
 
 data AspectRatio = FourThree
 	| ThreeTwo
@@ -201,4 +204,3 @@ drawImageLayout drawingArea aspectRatioCombo displayItemsModel textStylesModel t
 	renderFrame (floor effectiveW) (floor effectiveH) text ctxt displayItemsStylesInfo
 	restore
 	return ()
-

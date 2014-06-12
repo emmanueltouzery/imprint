@@ -98,7 +98,9 @@ listModelRemoveItem listModel itemModel = do
 
 listModelAddItem :: ListModel a -> Model a -> IO ()
 listModelAddItem listModel itemModel = do
-	modifyIORef (items listModel) (itemModel:)
+	-- would be faster to add at the beginning, but it's
+	-- not what the user expects...
+	modifyIORef (items listModel) (\l -> l ++ [itemModel])
 	readIORef (addedCallbacks listModel) >>= mapM (flip ($) itemModel) >> return ()
 
 listModelSetCurrentItem :: ListModel a -> Model a -> IO ()
