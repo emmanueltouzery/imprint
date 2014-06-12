@@ -82,6 +82,22 @@ showSettingsWindow builder latestConfig = do
 		liftIO $ setFontSizeForWidget ctxt text textStylePreview
 		renderText text ctxt cTextStyle
 
+	displayItemPositionCombo <- builderGetObject builder castToComboBox "displayItemPositionCombo"
+
+	positionDeleteButton <- builderGetObject builder castToButton "positionDeleteButton"
+	positionDeleteButton `on` buttonActivated $ do
+		confirm <- dialogYesNo settingsWindow "Are you sure to remove the display item?"
+		when confirm $ do
+			itemToRemove <- liftM fromJust $ listModelGetCurrentItem displayItemsModel 
+			newCurItem <- liftM (find (/= itemToRemove)) $ readListModel displayItemsModel
+			case newCurItem of
+				Nothing -> displayError settingsWindow "Can't delete the last display item"
+				Just newItem -> do
+					listModelSetCurrentItem displayItemsModel newItem
+					newPos <- liftM position $ readModel newItem
+					comboBoxSelectPosition displayItemPositionCombo newPos
+					listModelRemoveItem displayItemsModel itemToRemove
+
 	addListModelCurrentItemObserver displayItemsModel $ \currentDisplayItemModel -> do
 		putStrLn "current display item changed!"
 		bindModel currentDisplayItemModel marginXFromWidthL horMarginRangeBindInfo
@@ -96,7 +112,6 @@ showSettingsWindow builder latestConfig = do
 
 	readListModel displayItemsModel >>= listModelSetCurrentItem displayItemsModel . head
 
-	displayItemPositionCombo <- builderGetObject builder castToComboBox "displayItemPositionCombo"
 	liftM position (getCurItem >>= readModel) >>= comboBoxSelectPosition displayItemPositionCombo
 	displayItemPositionCombo `on` changed $
 		changeDisplayItemPosition settingsWindow displayItemPositionCombo displayItemsModel
