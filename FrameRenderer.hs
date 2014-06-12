@@ -22,7 +22,7 @@ renderDisplayItem width height text ctxt displayItem textStyle = do
 	liftIO $ updateFontFromTextStyle ctxt textStyle
 	(Rectangle _ _ rWidth rHeight) <- liftM snd $ liftIO (layoutGetPixelExtents text)
 	let xLeft = fromIntegral marginX
-	let xCenter = fromIntegral $ width - rWidth `mod` 2
+	let xCenter = fromIntegral $ (width `div` 2) - (rWidth `div` 2)
 	let xRight = fromIntegral $ width - rWidth - marginX
 	let yTop = fromIntegral marginY
 	let yBottom = fromIntegral $ height - rHeight - marginY
