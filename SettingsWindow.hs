@@ -38,8 +38,7 @@ showSettingsWindow builder latestConfig = do
 	textLayout <- layoutEmpty ctxt
 	textLayout `layoutSetText` "2014-04-01"
 	imageLayout `on` draw $ do
-		updatedConf <- liftIO $ updateConfFromModel latestConfig displayItemsModel
-		drawImageLayout imageLayout aspectRatioCombo updatedConf textLayout ctxt
+		drawImageLayout imageLayout aspectRatioCombo displayItemsModel textStylesModel textLayout ctxt
 
 	textStylePreview <- builderGetObject builder castToDrawingArea "textstylepreview"
 
@@ -168,16 +167,16 @@ getHeightMultiplier aspectRatioCombo = do
 		0 -> 3/4
 		_ -> 2/3
 
-getDisplayItemsStyles :: Conf -> [(DisplayItem, TextStyle)]
-getDisplayItemsStyles conf = zip displayItemsV textStylesV
-	where
-		displayItemsV = getSetting' conf displayItems
-		allTextStylesV = getSetting' conf textStyles
-		textStyleById sId = find ((==sId) . styleId) allTextStylesV
-		textStylesV = fmap (fromJust . textStyleById  . textStyleId) displayItemsV
+getDisplayItemsStyles :: ListModel DisplayItem -> ListModel TextStyle -> IO [(DisplayItem, TextStyle)]
+getDisplayItemsStyles displayItemsModel textStylesModel = do
+		displayItemsV <- readListModel displayItemsModel >>= mapM readModel
+		allTextStylesV <- readListModel textStylesModel >>= mapM readModel
+		let textStyleById sId = find ((==sId) . styleId) allTextStylesV
+		let textStylesV = fmap (fromJust . textStyleById  . textStyleId) displayItemsV
+		return $ zip displayItemsV textStylesV
 
-drawImageLayout :: DrawingArea -> ComboBox -> Conf -> PangoLayout -> PangoContext -> Render ()
-drawImageLayout drawingArea aspectRatioCombo conf text ctxt = do
+drawImageLayout :: DrawingArea -> ComboBox -> ListModel DisplayItem -> ListModel TextStyle -> PangoLayout -> PangoContext -> Render ()
+drawImageLayout drawingArea aspectRatioCombo displayItemsModel textStylesModel text ctxt = do
 	heightMultiplier <- liftIO $ getHeightMultiplier aspectRatioCombo
 
 	-- draw image borders...
@@ -198,7 +197,8 @@ drawImageLayout drawingArea aspectRatioCombo conf text ctxt = do
 	save
 	translate 0 top
 
-	renderFrame (floor effectiveW) (floor effectiveH) text ctxt $ getDisplayItemsStyles conf
+	displayItemsStylesInfo <- liftIO $ getDisplayItemsStyles displayItemsModel textStylesModel
+	renderFrame (floor effectiveW) (floor effectiveH) text ctxt displayItemsStylesInfo
 	restore
 	return ()
 

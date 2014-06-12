@@ -9,6 +9,9 @@ import Data.Time.Format (formatTime)
 import System.Locale (defaultTimeLocale)
 import Data.IORef
 import Control.Monad (liftM)
+import Data.List
+import Data.Maybe (fromJust)
+import Data.AppSettings
 
 import Settings
 import SettingsWindow
@@ -60,7 +63,7 @@ main = do
 	renderWith sur $ do
 		setSourcePixbuf img 0 0
 		paint
-		renderFrame width height text ctxt $ getDisplayItemsStyles settings
+		renderFrame width height text ctxt $ getDisplayItemsStylesConf settings
 
 	pbuf <- pixbufNewFromSurface sur 0 0 width height
 	pixbufSave pbuf "newout.jpg" "jpeg" [("quality", "95")]
@@ -68,3 +71,11 @@ main = do
 
 	showSettingsWindow builder latestConfig
 	mainGUI
+
+getDisplayItemsStylesConf :: Conf -> [(DisplayItem, TextStyle)]
+getDisplayItemsStylesConf conf = zip displayItemsV textStylesV
+	where
+		displayItemsV = getSetting' conf displayItems
+		allTextStylesV = getSetting' conf textStyles
+		textStyleById sId = find ((==sId) . styleId) allTextStylesV
+		textStylesV = fmap (fromJust . textStyleById  . textStyleId) displayItemsV
