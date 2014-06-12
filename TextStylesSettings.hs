@@ -1,4 +1,3 @@
-{-# LANGUAGE RankNTypes #-}
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 
 module TextStylesSettings where
@@ -9,11 +8,10 @@ import Graphics.UI.Gtk hiding (styleSet)
 import Data.Maybe (fromJust, isJust)
 import Data.IORef
 import Control.Monad (when, liftM)
-import Data.AppSettings (getSetting', Conf, setSetting)
 import Data.List
 import Control.Lens hiding (set)
 
-import Settings
+import Settings hiding (saveSettings)
 import GtkViewModel
 import FrameRenderer
 import Helpers
@@ -21,20 +19,22 @@ import Helpers
 minFontSize :: Int
 minFontSize = 5
 
-getDisplayItemTextStyle :: Conf -> ItemPosition -> TextStyle
-getDisplayItemTextStyle conf itemPosition = case find ((==selectedStyleId) . styleId) allStyles of
+getDisplayItemTextStyleModel :: ListModel DisplayItem -> ListModel TextStyle -> IO (Model TextStyle)
+getDisplayItemTextStyleModel displayItemsModel textStylesModel = do
+	allStylesModels <- readListModel textStylesModel
+	allStyles <- readListModel textStylesModel >>= mapM readModel
+	displayItem <- getCurrentDisplayItem displayItemsModel
+	let selectedStyleId = textStyleId displayItem
+	case findIndex ((==selectedStyleId) . styleId) allStyles of
 		Nothing -> error $ "Can't find text style of id " ++ show selectedStyleId
-		Just x -> x
-	where
-		allStyles = getSetting' conf textStyles
-		selectedStyleId = textStyleId displayItem
-		displayItem = fromJust $ getDisplayItem conf itemPosition
+		Just idx -> return $ allStylesModels !! idx
 
--- TODO same as getDisplayItemTextStyle return without the maybe
--- but trigger a error with a debuggable error message if it's not there.
--- (but in both cases don't use case but some Data.Maybe function)
-getDisplayItem :: Conf -> ItemPosition -> Maybe DisplayItem
-getDisplayItem conf itemPosition = find ((==itemPosition) . position) $ getSetting' conf displayItems
+getDisplayItemTextStyle :: ListModel DisplayItem -> ListModel TextStyle -> IO TextStyle
+getDisplayItemTextStyle displayItemsModel textStylesModel =
+	getDisplayItemTextStyleModel displayItemsModel textStylesModel >>= readModel
+
+getCurrentDisplayItem :: ListModel DisplayItem -> IO DisplayItem
+getCurrentDisplayItem displayItemsModel = listModelGetCurrentItem displayItemsModel >>= readModel . fromJust
 
 -- here is the reason why we work on ItemPosition and not on DisplayItem...
 -- we are a settings dialog. And so we will modify the display item...
@@ -45,57 +45,30 @@ getDisplayItem conf itemPosition = find ((==itemPosition) . position) $ getSetti
 -- one ItemPosition. So I find the display item by the position
 -- and I don't have to worry whether the item was modified or not,
 -- I know I'll find it.
-showTextStyleListDialog :: Builder -> Conf -> ItemPosition -> Window -> IO Conf
-showTextStyleListDialog builder conf itemPosition parent = do
-	curConfig <- newIORef conf
+showTextStyleListDialog :: Builder -> ListModel DisplayItem -> ListModel TextStyle -> Window -> IO ()
+showTextStyleListDialog builder displayItemsModel textStylesModel parent = do
 	activeItemSvg <- svgNewFromFile "active_item.svg"
 	dialog <- builderGetObject builder castToDialog "dialog1"
 	stylesVbox <- builderGetObject builder castToBox "stylesVbox"
 	containerForeach stylesVbox (\w -> containerRemove stylesVbox w)
-	textStyleDialogInfo <- prepareTextStyleDialog builder $
-		getDisplayItemTextStyle conf itemPosition
+
+	-- set the current text style in the list to the text style
+	-- of the current display item.
+	curTextStyleModel <- getDisplayItemTextStyleModel displayItemsModel textStylesModel
+	listModelSetCurrentItem textStylesModel curTextStyleModel
+
+	textStyleDialogInfo <- readModel curTextStyleModel >>= prepareTextStyleDialog builder
 	ctxt <- cairoCreateContext Nothing
 
-	let styles = getSetting' conf textStyles
-	let styleIds = fmap styleId styles
-	let styleGettersSetters = fmap (getStyleGetterSetter stylesVbox curConfig) styleIds
+	textStyleListBtnClose <- builderGetObject builder castToButton "textStyleListBtnClose"
+	textStyleListBtnClose `on` buttonActivated $ widgetHide dialog
 
-	textStyleListBtnCancel <- builderGetObject builder castToButton "textStyleListBtnCancel"
-	textStyleListBtnCancel `on` buttonActivated $ do
-		dialogResponse dialog ResponseCancel
-		widgetHide dialog
-
-	textStyleListBtnOk <- builderGetObject builder castToButton "textStyleListBtnOk"
-	textStyleListBtnOk `on` buttonActivated $ do
-		dialogResponse dialog ResponseOk
-		widgetHide dialog
-
-	mapM_ (uncurry $ vboxAddStyleItem dialog stylesVbox ctxt activeItemSvg textStyleDialogInfo curConfig itemPosition) styleGettersSetters
+	styles <- readListModel textStylesModel
+	mapM_ (vboxAddStyleItem dialog stylesVbox ctxt activeItemSvg textStyleDialogInfo displayItemsModel textStylesModel) styles
 	windowSetDefaultSize dialog 600 500
 	set dialog [windowTransientFor := parent]
-	resp <- dialogRun dialog
+	dialogRun dialog
 	widgetHide dialog
-	case resp of
-		ResponseOk -> do
-			readIORef curConfig
-		_ -> do
-			return conf -- user pressed cancel
-
-getStyleGetterSetter :: Box -> IORef Conf -> Int -> (Conf->TextStyle, TextStyle -> IO ())
-getStyleGetterSetter stylesVbox latestConfig cStyleId = (getStyleById cStyleId, updateStyle latestConfig stylesVbox cStyleId)
-
-getStyleById :: Int -> Conf -> TextStyle
-getStyleById cStyleId conf = fromJust $ find ((==cStyleId) . styleId) allStyles
-	where allStyles = getSetting' conf textStyles
-
-updateStyle :: IORef Conf -> Box -> Int -> TextStyle -> IO ()
-updateStyle latestConfig stylesVbox cStyleId newStyle = do
-	updateConfig latestConfig $ \c -> do
-		let allStyles = getSetting' c textStyles
-		let styleIdx = fromJust $ findIndex ((==cStyleId) . styleId) allStyles
-		let newConf = setSetting c textStyles $ allStyles & ix styleIdx .~ newStyle
-		widgetQueueDraw stylesVbox
-		return newConf
 
 prepareTextStyleDrawingArea :: PangoContext -> PangoLayout -> DrawingArea -> IO ()
 prepareTextStyleDrawingArea ctxt text drawingArea = do
@@ -108,9 +81,9 @@ prepareTextStyleDrawingArea ctxt text drawingArea = do
 -- Maybe could use Gtk signals for the styleUpdatedCallback,
 -- but don't know how/whether it's possible.
 -- TODO too many parameters, and way too long!!!
-vboxAddStyleItem :: Dialog -> Box -> PangoContext -> SVG -> TextStyleDialogInfo -> IORef Conf -> ItemPosition
-		-> (Conf->TextStyle) -> (TextStyle -> IO ()) -> IO ()
-vboxAddStyleItem parent box ctxt activeItemSvg textStyleDialogInfo latestConfig itemPosition confTextStyleGetter styleUpdatedCallback = do
+vboxAddStyleItem :: Dialog -> Box -> PangoContext -> SVG -> TextStyleDialogInfo
+		 -> ListModel DisplayItem -> ListModel TextStyle -> Model TextStyle -> IO ()
+vboxAddStyleItem parent box ctxt activeItemSvg textStyleDialogInfo displayItemsModel textStylesModel curStyleModel = do
 	text <- layoutEmpty ctxt
 	text `layoutSetText` "2014-04-01"
 
@@ -124,23 +97,25 @@ vboxAddStyleItem parent box ctxt activeItemSvg textStyleDialogInfo latestConfig 
 
 	prepareTextStyleDrawingArea ctxt text drawingArea
 	drawingArea `on` draw $ do
-		conf <- liftIO $ readIORef latestConfig
-		let cTextStyle = confTextStyleGetter conf
+		cTextStyle <- liftIO $ readModel curStyleModel
 		liftIO $ do
 			setFontSizeForWidget ctxt text drawingArea
 		renderText text ctxt cTextStyle
 
 	checkbox `on` draw $ do
-		conf <- liftIO $ readIORef latestConfig
-		let cTextStyle = confTextStyleGetter conf
-		let selectedStyleId = getDisplayItemTextStyle conf itemPosition
+		cTextStyle <- liftIO $ readModel curStyleModel
+		selectedStyleId <- liftIO $ listModelGetCurrentItem textStylesModel >>= readModel . fromJust
 		when (selectedStyleId == cTextStyle) $ do
 			translate 0 $ fromIntegral cbYtop
 			svgRender activeItemSvg >> return ()
 			translate 0 $ (-fromIntegral cbYtop)
 
-	let styleSelectCb = do
-		liftIO $ updateConfig latestConfig $ changeSelectedConfig confTextStyleGetter box itemPosition
+	let styleSelectCb = liftIO $ do
+		cTextStyle <- readModel curStyleModel
+		curDisplayItemModel <- liftM fromJust $ listModelGetCurrentItem displayItemsModel
+		modifyModel curDisplayItemModel $ \i -> i { textStyleId = styleId cTextStyle }
+		listModelSetCurrentItem textStylesModel curStyleModel
+		widgetQueueDraw box -- TODO maybe through listeners?
 		return True
 
 	widgetAddEvents checkbox [ButtonPressMask, ButtonReleaseMask]
@@ -155,25 +130,23 @@ vboxAddStyleItem parent box ctxt activeItemSvg textStyleDialogInfo latestConfig 
 	vbtnBox <- vButtonBoxNew
 	copyBtn <- prepareButton stockCopy
 	copyBtn `on` buttonActivated $ do
-		conf <- readIORef latestConfig
-		let newStyle = styleIdL .~ getNewStyleId conf $ confTextStyleGetter conf
-		let styles = getSetting' conf textStyles
-		let newConf = setSetting conf textStyles $ styles ++ [newStyle]
-		Settings.saveSettings newConf
-		writeIORef latestConfig newConf
-		let (styleGet, styleSet) = getStyleGetterSetter box latestConfig $ styleId newStyle
-		vboxAddStyleItem parent box ctxt activeItemSvg textStyleDialogInfo latestConfig itemPosition styleGet styleSet
+		cTextStyle <- readModel curStyleModel
+		newStyleId <- getNewStyleId textStylesModel
+		let newStyle = styleIdL .~ newStyleId $ cTextStyle
+		newStyleModel <- makeModel newStyle
+		listModelAddItem textStylesModel newStyleModel
+		-- or register a listener on the list model and have it do that for me?
+		vboxAddStyleItem parent box ctxt activeItemSvg textStyleDialogInfo displayItemsModel textStylesModel newStyleModel
 		
 	containerAdd vbtnBox copyBtn
 	editBtn <- prepareButton stockEdit
 	editBtn `on` buttonActivated $ do
-		conf <- readIORef latestConfig
-		showTextStyleDialog parent textStyleDialogInfo (confTextStyleGetter conf) styleUpdatedCallback
+		showTextStyleDialog parent textStyleDialogInfo curStyleModel
  	containerAdd vbtnBox editBtn
 	deleteBtn <- prepareButton stockDelete
 	deleteBtn `on` buttonActivated $ do
 		userConfirms <- dialogYesNo parent "Sure to delete the text style?"
-		when userConfirms $ updateConfig latestConfig $ removeTextStyle parent confTextStyleGetter box
+		when userConfirms $ removeTextStyle parent box textStylesModel displayItemsModel curStyleModel
 		
 	containerAdd vbtnBox deleteBtn
 	boxPackStart hbox vbtnBox PackNatural 0
@@ -181,38 +154,24 @@ vboxAddStyleItem parent box ctxt activeItemSvg textStyleDialogInfo latestConfig 
 	boxPackStart box hbox PackNatural 0
 	widgetShowAll hbox
 
-changeSelectedConfig :: (Conf->TextStyle) -> Box -> ItemPosition -> Conf -> IO Conf
-changeSelectedConfig confTextStyleGetter box itemPosition conf = do
-	let clickedStyleId = styleId $ confTextStyleGetter conf
-	let displayItemsV = getSetting' conf displayItems
-	let displayItem = fromJust $ find ((==itemPosition) . position) displayItemsV
-	-- doesn't matter if we change the order, could be a hash
-	-- key = item position, value = the rest.
-	let newDisplayItems = delete displayItem displayItemsV ++ [displayItem { textStyleId = clickedStyleId }]
-	let newConf = setSetting conf displayItems newDisplayItems
-	widgetQueueDraw box
-	return newConf
-
-removeTextStyle :: Dialog -> (Conf->TextStyle) -> Box -> Conf -> IO Conf
-removeTextStyle parent confTextStyleGetter box conf = do
-	let styleIdToRemove = styleId $ confTextStyleGetter conf
-	let displayItemsV = getSetting' conf displayItems
+removeTextStyle :: Dialog -> Box -> ListModel TextStyle -> ListModel DisplayItem -> Model TextStyle -> IO ()
+removeTextStyle parent box textStylesModel displayItemsModel textStyleModel = do
+	styleIdToRemove <- liftM styleId $ readModel textStyleModel
+	displayItemsV <- readListModel displayItemsModel >>= mapM readModel
 	let usedTextStyleIds = fmap textStyleId displayItemsV
 	if styleIdToRemove `elem` usedTextStyleIds
-		then do
-			displayError parent "Cannot delete the selected text style"
-			return conf
+		then displayError parent "Cannot delete the selected text style"
 		else do
-			let cStyles = getSetting' conf textStyles
-			let styleIdx = fromJust $ findIndex ((==styleIdToRemove) . styleId) cStyles
-			let newConf = setSetting conf textStyles $ filter ((/=styleIdToRemove) . styleId) cStyles
+			cStyles <- readListModel textStylesModel
+			let styleIdx = fromJust $ findIndex (==textStyleModel) cStyles
+			listModelRemoveItem textStylesModel textStyleModel
 			boxWidgets <- containerGetChildren box
 			containerRemove box $ boxWidgets !! styleIdx
-			return newConf
 
-getNewStyleId :: Conf -> Int
-getNewStyleId conf = 1 + maximum' existingIds
-	where existingIds = fmap styleId (getSetting' conf textStyles)
+getNewStyleId :: ListModel TextStyle -> IO Int
+getNewStyleId textStylesModel = do
+	styles <- readListModel textStylesModel >>= mapM readModel
+	return $ 1 + maximum' (fmap styleId styles)
 
 maximum' :: [Int] -> Int
 maximum' [] = 0
@@ -279,13 +238,13 @@ prepareTextStyleDialog builder textStyle = do
 
 	return $ TextStyleDialogInfo textStyleModel textStyleBtnOk dialog okSignalRef
 
-showTextStyleDialog :: Dialog -> TextStyleDialogInfo -> TextStyle -> (TextStyle -> IO ()) -> IO ()
-showTextStyleDialog parent (TextStyleDialogInfo curTextStyle textStyleBtnOk dialog okSigRef) textStyle updateCallback = do
-	modifyModel curTextStyle $ const textStyle
+showTextStyleDialog :: Dialog -> TextStyleDialogInfo -> Model TextStyle -> IO ()
+showTextStyleDialog parent (TextStyleDialogInfo curTextStyle textStyleBtnOk dialog okSigRef) textStyleModel = do
+	readModel textStyleModel >>= modifyModel curTextStyle . const
 	okSig <- readIORef okSigRef
 	when (isJust okSig) $ signalDisconnect $ fromJust okSig
 	newOkSig <- textStyleBtnOk `on` buttonActivated $ do
-		readModel curTextStyle >>= updateCallback
+		readModel curTextStyle >>= modifyModel textStyleModel . const
 		widgetHide dialog
 	writeIORef okSigRef (Just newOkSig)
 	
@@ -311,10 +270,3 @@ setFontSizeForBoundingBox ctxt text fontSize maxWidth maxHeight = do
 	if rWidth < maxWidth && rHeight < maxHeight
 		then setFontSizeForBoundingBox ctxt text (fontSize+1) maxWidth maxHeight
 		else contextSetFontSize ctxt $ fromIntegral $ fontSize-1
-
-updateConfig :: IORef Conf -> (Conf -> IO Conf) -> IO ()
-updateConfig latestConfig newConfigMaker = do
-	conf <- readIORef latestConfig
-	conf' <- newConfigMaker conf
-	saveSettings conf'
-	writeIORef latestConfig conf'

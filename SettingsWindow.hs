@@ -6,7 +6,6 @@ import Graphics.Rendering.Cairo hiding (width, height, x)
 import Data.IORef
 import Data.AppSettings (getSetting', setSetting, Conf)
 import Control.Monad (liftM, when)
-import Control.Lens
 import Data.Maybe (fromJust)
 import Data.List
 
@@ -24,7 +23,9 @@ showSettingsWindow builder latestConfig = do
 
 	startConf <- readIORef latestConfig
 	displayItemsModel <- makeListModel $ getSetting' startConf displayItems
-	let getCurItem = liftM fromJust . listModelGetCurrentItem
+	textStylesModel <- makeListModel $ getSetting' startConf textStyles
+
+	let getCurItem = liftM fromJust $ listModelGetCurrentItem displayItemsModel
 
 	-- TODO create bottom-right if there is no display item at all
 
@@ -44,14 +45,9 @@ showSettingsWindow builder latestConfig = do
 
 	pickTextStyleBtn <- builderGetObject builder castToButton "picktextstylebtn"
 	pickTextStyleBtn `on` buttonActivated $ do
-		conf <- readIORef latestConfig
-		displayItemModel <- getCurItem displayItemsModel
-		itemPosition <- liftM position $ readModel displayItemModel
-		newConf <- showTextStyleListDialog builder conf itemPosition settingsWindow
-		writeIORef latestConfig newConf
+		showTextStyleListDialog builder displayItemsModel textStylesModel settingsWindow
 		-- in case the user changed the text style
-		-- for the model, update the model.
-		modifyModel displayItemModel (textStyleIdL .~ styleId (getDisplayItemTextStyle newConf itemPosition))
+		-- for the model, redraw.
 		widgetQueueDraw textStylePreview
 		return ()
 
@@ -83,9 +79,7 @@ showSettingsWindow builder latestConfig = do
 	text <- layoutEmpty ctxt
 	text `layoutSetText` "2014-04-01"
 	textStylePreview `on` draw $ do
-		conf <- liftIO $ readIORef latestConfig
-		curDisplayItem <- liftIO $ getCurItem displayItemsModel >>= readModel
-		let cTextStyle = getDisplayItemTextStyle conf $ position curDisplayItem
+		cTextStyle <- liftIO $ getDisplayItemTextStyle displayItemsModel textStylesModel
 		liftIO $ setFontSizeForWidget ctxt text textStylePreview
 		renderText text ctxt cTextStyle
 
@@ -104,7 +98,7 @@ showSettingsWindow builder latestConfig = do
 	readListModel displayItemsModel >>= listModelSetCurrentItem displayItemsModel . head
 
 	displayItemPositionCombo <- builderGetObject builder castToComboBox "displayItemPositionCombo"
-	liftM position (getCurItem displayItemsModel >>= readModel) >>= comboBoxSelectPosition displayItemPositionCombo
+	liftM position (getCurItem >>= readModel) >>= comboBoxSelectPosition displayItemPositionCombo
 	displayItemPositionCombo `on` changed $
 		changeDisplayItemPosition settingsWindow displayItemPositionCombo displayItemsModel
 
