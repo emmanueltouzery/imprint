@@ -62,7 +62,8 @@ data DisplayItem = DisplayItem
 		textSizeFromWidth :: Double,
 		marginXFromWidth :: Double,
 		marginYFromWidth :: Double,
-		position :: ItemPosition
+		position :: ItemPosition,
+		itemContents :: String
 	} deriving (Show, Read, Eq)
 --
 -- http://stackoverflow.com/questions/17132514/
@@ -76,7 +77,8 @@ displayItems = ListSetting "displayItems" $ [
 		textSizeFromWidth = 0.04,
 		marginXFromWidth = 0.025,
 		marginYFromWidth = 0.025,
-		position = BottomRight
+		position = BottomRight,
+		itemContents = "%date{%x}"
 	}
 	]
 

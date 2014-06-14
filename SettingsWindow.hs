@@ -35,6 +35,17 @@ showSettingsWindow builder latestConfig = do
 	aspectRatioCombo <- builderGetObject builder castToComboBox "aspect_ratio_combo"
 	aspectRatioCombo `on` changed $ widgetQueueDraw imageLayout
 
+	-- TODO turns out too small, workaround, forced height request of 30px
+	-- in the gtkbuilder file...
+	contentsCombo <- builderGetObject builder castToComboBox "contentscombo"
+	comboBoxSetModelText contentsCombo
+	let comboContentsBindInfo = ComboBindInfo
+		{
+			comboWidget = contentsCombo,
+			comboValues = contentsComboData,
+			defaultIndex = length contentsComboData - 1
+		}
+
 	textLayout <- layoutEmpty ctxt
 	textLayout `layoutSetText` "2014-04-01"
 	imageLayout `on` draw $ do
@@ -103,6 +114,7 @@ showSettingsWindow builder latestConfig = do
 		bindModel currentDisplayItemModel marginXFromWidthL horMarginRangeBindInfo
 		bindModel currentDisplayItemModel textSizeFromWidthL scaleRangeBindInfo
 		bindModel currentDisplayItemModel marginYFromWidthL verMarginRangeBindInfo
+		bindModel currentDisplayItemModel itemContentsL comboContentsBindInfo
 		widgetQueueDraw imageLayout
 		widgetQueueDraw textStylePreview
 		-- this is so that we redraw when the current item is modified.
@@ -128,6 +140,24 @@ showSettingsWindow builder latestConfig = do
 comboIndexes :: [(Int, ItemPosition)]
 comboIndexes = [(0, TopLeft), (1, TopCenter), (2, TopRight),
 		(3, BottomLeft), (4, BottomCenter), (5, BottomRight)]
+
+contentsComboData :: [(String, String)]
+contentsComboData = [
+	("Filename", "%file"),
+	("Date", "%date{%x}"),
+	("Date and time", "%date{%x %R}"),
+	("Date and time, seconds", "%date{%x %X}"),
+	("Exposition time", "%expo"),
+	("Aperture", "%aper"),
+	("ISO", "%iso"),
+	("Exposure bias", "%expo_bias"),
+	("Make", "%make"),
+	("Model", "%model"),
+	("Software", "%soft"),
+	("Copyright", "%copy"),
+	("Focal length (35mm)", "%focal35"),
+	("Advanced...", "")
+	]
 
 changeDisplayItemPosition :: Window -> ComboBox -> ListModel DisplayItem -> IO ()
 changeDisplayItemPosition parent displayItemPositionCombo displayItemsModel = do

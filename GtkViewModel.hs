@@ -18,7 +18,8 @@ module GtkViewModel (
 	Bindable,
 	bindModel,
 	addModelObserver,
-	RangeBindInfo(..)
+	RangeBindInfo(..),
+	ComboBindInfo(..)
 ) where
 
 import Data.IORef
@@ -26,6 +27,7 @@ import Control.Lens
 import Graphics.UI.Gtk
 import Control.Monad (liftM, when)
 import Data.List
+import Data.Maybe (fromMaybe)
 
 import Helpers
 import Settings (ColorRgba)
@@ -175,4 +177,24 @@ instance (RangeClass a) => Bindable (RangeBindInfo a) Double where
 		adj <- rangeGetAdjustment $ range w
 		onValueChanged adj $ do
 			liftM (/100) (adjustmentGetValue adj) >>= cb
+		>> return ()
+
+data ComboBindInfo a b = ComboBindInfo
+	{
+		comboWidget :: a,
+		comboValues :: [(String,b)],
+		defaultIndex :: Int
+	}
+
+instance (ComboBoxClass a, Eq b) => Bindable (ComboBindInfo a b) b where
+	initBind (ComboBindInfo combo values _) _ = 
+		mapM_ (comboBoxAppendText combo . fst) values
+	setWidgetValue (ComboBindInfo combo values defaultIdx) curValue = do
+		let idx = fromMaybe defaultIdx $ findIndex ((==curValue) . snd) values
+		comboBoxSetActive combo idx
+	registerWidgetListener (ComboBindInfo combo values _) cb = do
+		combo `on` changed $ do
+			idx <- comboBoxGetActive combo
+			let selectedValue = snd $ values !! idx
+			cb selectedValue
 		>> return ()
