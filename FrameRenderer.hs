@@ -1,4 +1,4 @@
-module FrameRenderer (renderFrame, renderText, contextSetFontSize) where
+module FrameRenderer (renderFrame, renderText) where
 
 import Graphics.UI.Gtk
 import Graphics.Rendering.Cairo hiding (width, height, x)
@@ -16,10 +16,9 @@ renderDisplayItem width height text ctxt displayItem textStyle = do
 	let marginX = floor $ fromIntegral width * marginXFromWidth displayItem
 	let marginY = floor $ fromIntegral width * marginYFromWidth displayItem
 	let textSizePoints = fromIntegral width * textSizeFromWidth displayItem
-	liftIO $ contextSetFontSize ctxt textSizePoints
 	-- renderText will also set the font, but I must do it
 	-- before already to get the right font metrics...
-	liftIO $ updateFontFromTextStyle ctxt textStyle
+	liftIO $ updateFontFromTextStyle ctxt text textStyle textSizePoints
 	(Rectangle _ _ rWidth rHeight) <- liftM snd $ liftIO (layoutGetPixelExtents text)
 	let xLeft = fromIntegral marginX
 	let xCenter = fromIntegral $ (width `div` 2) - (rWidth `div` 2)
@@ -33,12 +32,12 @@ renderDisplayItem width height text ctxt displayItem textStyle = do
 		BottomLeft -> moveTo xLeft yBottom
 		BottomCenter -> moveTo xCenter yBottom
 		BottomRight -> moveTo xRight yBottom
-	renderText text ctxt textStyle
+	renderText text ctxt textStyle textSizePoints
 	return ()
 
-renderText :: PangoLayout -> PangoContext -> TextStyle -> Render ()
-renderText text ctxt textStyle = do
-	liftIO $ updateFontFromTextStyle ctxt textStyle
+renderText :: PangoLayout -> PangoContext -> TextStyle -> Double -> Render ()
+renderText text ctxt textStyle fontSize = do
+	liftIO $ updateFontFromTextStyle ctxt text textStyle fontSize
 	layoutPath text
 	setSourceRGBA `applyColor` textFill textStyle
 	fillPreserve
@@ -47,16 +46,10 @@ renderText text ctxt textStyle = do
 	setLineWidth $ fromIntegral rHeight * strokeHeightRatio textStyle
 	stroke
 
-updateFontFromTextStyle :: PangoContext -> TextStyle -> IO ()
-updateFontFromTextStyle ctxt textStyle = do
+updateFontFromTextStyle :: PangoContext -> PangoLayout -> TextStyle -> Double -> IO ()
+updateFontFromTextStyle ctxt text textStyle fontSize = do
 	font <- case fontName textStyle of
 		Nothing -> contextGetFontDescription ctxt
-		Just name -> liftIO $ fontDescriptionFromString name
-	--liftIO $ layoutSetFontDescription text (Just fontDesc)
-	contextSetFontDescription ctxt font
-
-contextSetFontSize :: PangoContext -> Double -> IO ()
-contextSetFontSize ctxt fontSize = do
-	font <- contextGetFontDescription ctxt
-	fontDescriptionSetSize font fontSize
-	contextSetFontDescription ctxt font
+		Just name -> fontDescriptionFromString name
+	liftIO $ fontDescriptionSetSize font fontSize
+	liftIO $ layoutSetFontDescription text (Just font)

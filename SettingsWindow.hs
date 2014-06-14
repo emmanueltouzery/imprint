@@ -79,8 +79,8 @@ showSettingsWindow builder latestConfig = do
 	text `layoutSetText` "2014-04-01"
 	textStylePreview `on` draw $ do
 		cTextStyle <- liftIO $ getDisplayItemTextStyle displayItemsModel textStylesModel
-		liftIO $ setFontSizeForWidget ctxt text textStylePreview
-		renderText text ctxt cTextStyle
+		fontSize <- liftIO $ setFontSizeForWidget ctxt text textStylePreview cTextStyle
+		renderText text ctxt cTextStyle $ fromIntegral fontSize
 
 	displayItemPositionCombo <- builderGetObject builder castToComboBox "displayItemPositionCombo"
 

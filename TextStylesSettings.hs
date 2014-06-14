@@ -70,11 +70,11 @@ showTextStyleListDialog builder displayItemsModel textStylesModel parent = do
 	dialogRun dialog
 	widgetHide dialog
 
-prepareTextStyleDrawingArea :: PangoContext -> PangoLayout -> DrawingArea -> IO ()
-prepareTextStyleDrawingArea ctxt text drawingArea = do
+prepareTextStyleDrawingArea :: PangoContext -> PangoLayout -> DrawingArea -> Model TextStyle -> IO ()
+prepareTextStyleDrawingArea ctxt text drawingArea textStyleModel = do
 	drawingArea `on` configureEvent $ do
 		-- widget resize
-		liftIO $ setFontSizeForWidget ctxt text drawingArea
+		liftIO $ readModel textStyleModel >>= setFontSizeForWidget ctxt text drawingArea
 		return True
 	return ()
 
@@ -95,12 +95,8 @@ vboxAddStyleItem parent box ctxt activeItemSvg textStyleDialogInfo displayItemsM
 	drawingArea <- drawingAreaNew
 	widgetSetSizeRequest drawingArea 450 100
 
-	prepareTextStyleDrawingArea ctxt text drawingArea
-	drawingArea `on` draw $ do
-		cTextStyle <- liftIO $ readModel curStyleModel
-		liftIO $ do
-			setFontSizeForWidget ctxt text drawingArea
-		renderText text ctxt cTextStyle
+	prepareTextStyleDrawingArea ctxt text drawingArea curStyleModel
+	drawingArea `on` draw $ drawTextStylePreview drawingArea ctxt text curStyleModel
 
 	checkbox `on` draw $ do
 		cTextStyle <- liftIO $ readModel curStyleModel
@@ -154,6 +150,13 @@ vboxAddStyleItem parent box ctxt activeItemSvg textStyleDialogInfo displayItemsM
 	boxPackStart box hbox PackNatural 0
 	widgetShowAll hbox
 
+drawTextStylePreview :: DrawingArea -> PangoContext -> PangoLayout -> Model TextStyle -> Render ()
+drawTextStylePreview drawingArea ctxt text curStyleModel = do
+	cTextStyle <- liftIO $ readModel curStyleModel
+	fontSize <- liftIO $ do
+		setFontSizeForWidget ctxt text drawingArea cTextStyle
+	renderText text ctxt cTextStyle $ fromIntegral fontSize
+
 removeTextStyle :: Dialog -> Box -> ListModel TextStyle -> ListModel DisplayItem -> Model TextStyle -> IO ()
 removeTextStyle parent box textStylesModel displayItemsModel textStyleModel = do
 	styleIdToRemove <- liftM styleId $ readModel textStyleModel
@@ -198,10 +201,8 @@ prepareTextStyleDialog builder textStyle = do
 	dialog <- builderGetObject builder castToDialog "settings_dialog"
 	textPreview <- builderGetObject builder castToDrawingArea "textPreview"
 
-	prepareTextStyleDrawingArea ctxt text textPreview
-	textPreview `on` draw $ do
-		cTextStyle <- liftIO $ readModel textStyleModel
-		renderText text ctxt cTextStyle
+	prepareTextStyleDrawingArea ctxt text textPreview textStyleModel
+	textPreview `on` draw $ drawTextStylePreview textPreview ctxt text textStyleModel
 
 	builderGetObject builder castToColorButton "fillColor" >>= bindModel textStyleModel textFillL
 	builderGetObject builder castToColorButton "strokeColor" >>= bindModel textStyleModel textStrokeL
@@ -221,11 +222,8 @@ prepareTextStyleDialog builder textStyle = do
 	fontButton <- builderGetObject builder castToFontButton "fontButton"
 	bindModel textStyleModel fontNameL fontButton
 
-	-- TODO we're changing the font when any setting changes.
-	-- no need to recompute the font when the colors are changed
-	-- for instance.
 	addModelObserver textStyleModel $ \_ -> do
-		setFontSizeForWidget ctxt text textPreview
+		--setFontSizeForWidget ctxt text textPreview
 		-- the following however is always needed.
 		widgetQueueDraw textPreview
 
@@ -254,19 +252,24 @@ showTextStyleDialog parent (TextStyleDialogInfo curTextStyle textStyleBtnOk dial
 	widgetHide dialog
 	return ()
 
-setFontSizeForWidget :: WidgetClass a => PangoContext -> PangoLayout -> a -> IO ()
-setFontSizeForWidget ctxt text widget = liftIO $ do
+setFontSizeForWidget :: WidgetClass a => PangoContext -> PangoLayout -> a -> TextStyle -> IO Int
+setFontSizeForWidget ctxt text widget textStyle = liftIO $ do
 	w <- widgetGetAllocatedWidth widget
 	h <- widgetGetAllocatedHeight widget
-	setFontSizeForBoundingBox ctxt text minFontSize w h
+	setFontSizeForBoundingBox ctxt text minFontSize w h textStyle
 
-setFontSizeForBoundingBox :: PangoContext -> PangoLayout -> Int -> Int -> Int -> IO ()
-setFontSizeForBoundingBox ctxt text fontSize maxWidth maxHeight = do
-	contextSetFontSize ctxt $ fromIntegral fontSize
-	-- the next two lines are needed on windows.
-	fnt <- contextGetFontDescription ctxt
+setFontSizeForBoundingBox :: PangoContext -> PangoLayout -> Int -> Int -> Int -> TextStyle -> IO Int
+setFontSizeForBoundingBox ctxt text fontSize maxWidth maxHeight textStyle = do
+	fnt <- case fontName textStyle of
+		Nothing -> contextGetFontDescription ctxt
+		Just name -> fontDescriptionFromString name
+	liftIO $ fontDescriptionSetSize fnt $ fromIntegral fontSize
 	layoutSetFontDescription text $ Just fnt
 	(Rectangle _ _ rWidth rHeight) <- liftM snd $ layoutGetPixelExtents text
 	if rWidth < maxWidth && rHeight < maxHeight
-		then setFontSizeForBoundingBox ctxt text (fontSize+1) maxWidth maxHeight
-		else contextSetFontSize ctxt $ fromIntegral $ fontSize-1
+		then setFontSizeForBoundingBox ctxt text (fontSize+1) maxWidth maxHeight textStyle
+		else do
+			layoutFnt <- liftM fromJust $ layoutGetFontDescription text
+			fontDescriptionSetSize layoutFnt $ fromIntegral $ fontSize-1
+			layoutSetFontDescription text $ Just layoutFnt
+			return $ fontSize-1
