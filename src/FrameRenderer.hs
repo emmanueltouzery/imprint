@@ -41,24 +41,20 @@ parseEscapedPercent = do
 parseFormatItem :: GenParser Char st FormatElement
 parseFormatItem = do
 	string "%"
-	format <- many1 $ noneOf " \t\r\n"
-	return $ case format of
-		"file" -> Filename
-		"expo" -> ExifContents exposureTime
-		"aper" -> ExifContents fnumber
-		"iso" -> ExifContents isoSpeedRatings
-		"expo_bias" -> ExifContents exposureBiasValue
-		"make" -> ExifContents make
-		"model" -> ExifContents model
-		"soft" -> ExifContents software
-		"copy" -> ExifContents copyright
-		"focal35" -> ExifContents focalLengthIn35mmFilm
-		_ -> error $ "Unknown format type: " ++ format
+	do { try (string "file"); return Filename }
+		<|> do { try (string "expo"); return $ ExifContents exposureTime }
+		<|> do { try (string "aper"); return $ ExifContents fnumber }
+		<|> do { try (string "iso"); return $ ExifContents isoSpeedRatings }
+		<|> do { try (string "expo_bias"); return $ ExifContents exposureBiasValue }
+		<|> do { try (string "make"); return $ ExifContents make }
+		<|> do { try (string "model"); return $ ExifContents model }
+		<|> do { try (string "soft"); return $ ExifContents software }
+		<|> do { try (string "copy"); return $ ExifContents copyright }
+		<|> do { try (string "focal35"); return $  ExifContents focalLengthIn35mmFilm }
 	
 parseString :: GenParser Char st FormatElement
 parseString = do
-	-- don't want to eat the %!
-	contents <- manyTill anyChar $ try $ char '%'
+	contents <- many1 $ noneOf "%"
 	return $ StringContents contents
 
 -- TODO not possible to get the current pango context myself?
