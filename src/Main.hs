@@ -4,9 +4,7 @@ module Main where
 import Graphics.UI.Gtk.Gdk.Pixbuf
 import Graphics.Rendering.Cairo hiding (width, height, x)
 import Graphics.UI.Gtk hiding (styleSet)
-import Graphics.HsExif (parseFileExif, getDateTimeOriginal)
-import Data.Time.Format (formatTime)
-import System.Locale (defaultTimeLocale)
+import Graphics.HsExif (parseFileExif)
 import Data.IORef
 import Control.Monad (liftM)
 import Data.List
@@ -15,7 +13,7 @@ import Data.AppSettings
 
 import Settings
 import SettingsWindow
-import FrameRenderer (renderFrame)
+import FrameRenderer (renderFrame, ImageInfo(..))
 
 minFontSize :: Int
 minFontSize = 5
@@ -46,11 +44,6 @@ main = do
 	let exifData = case exifInfo of
 		Left errorStr -> error errorStr
 		Right exif -> exif
-	let picDateTime = case getDateTimeOriginal exifData of
-		Nothing -> error "No date info in EXIF"
-		Just v -> v
-	print picDateTime
-	let formattedDate = formatTime defaultTimeLocale "%x" picDateTime
 
 	img <- pixbufNewFromFile filename
 	width <- pixbufGetWidth img
@@ -58,12 +51,13 @@ main = do
 	sur <- createImageSurface FormatRGB24 width height
 	ctxt <- cairoCreateContext Nothing
 	text <- layoutEmpty ctxt
-	text `layoutSetText` formattedDate
+
+	let imageInfo = ImageInfo filename exifData
 
 	renderWith sur $ do
 		setSourcePixbuf img 0 0
 		paint
-		renderFrame width height text ctxt $ getDisplayItemsStylesConf settings
+		renderFrame width height imageInfo text ctxt $ getDisplayItemsStylesConf settings
 
 	pbuf <- pixbufNewFromSurface sur 0 0 width height
 	pixbufSave pbuf "newout.jpg" "jpeg" [("quality", "95")]

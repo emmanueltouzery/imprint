@@ -8,6 +8,8 @@ import Data.AppSettings (getSetting', setSetting, Conf)
 import Control.Monad (liftM, when)
 import Data.Maybe (fromJust)
 import Data.List
+import Graphics.HsExif
+import qualified Data.Map as Map
 
 import TextStylesSettings
 import Settings
@@ -245,7 +247,19 @@ drawImageLayout drawingArea aspectRatioCombo displayItemsModel textStylesModel t
 	save
 	translate 0 top
 
+	let imageInfo = ImageInfo "filename.jpg" $ Map.fromList [
+		(exposureTime, ExifText "1/160"),
+		(fnumber, ExifText "3.6"),
+		(isoSpeedRatings, ExifText "200"),
+		(exposureBiasValue, ExifText "0.00"),
+		(make, ExifText "SONY"),
+		(model, ExifText "NEX-3N"),
+		(software, ExifText "gimp-2.8.2"),
+		(copyright, ExifText "copyright 2014"),
+		(focalLengthIn35mmFilm, ExifText "32"),
+		(dateTimeOriginal, ExifText "2014:06:15 15:52:00")]
+
 	displayItemsStylesInfo <- liftIO $ getDisplayItemsStyles displayItemsModel textStylesModel
-	renderFrame (floor effectiveW) (floor effectiveH) text ctxt displayItemsStylesInfo
+	renderFrame (floor effectiveW) (floor effectiveH) imageInfo text ctxt displayItemsStylesInfo
 	restore
 	return ()

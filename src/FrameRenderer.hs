@@ -1,9 +1,15 @@
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
-module FrameRenderer (renderFrame, renderText, parseFormat, FormatElement(..)) where
+module FrameRenderer (renderFrame, renderText, parseFormat, FormatElement(..), ImageInfo(..)) where
 
 import Graphics.UI.Gtk
 import Graphics.Rendering.Cairo hiding (width, height, x)
 import Control.Monad (liftM)
+import Data.Map (Map)
+import qualified Data.Map as Map
+import Data.List
+import Data.Maybe (fromMaybe)
+import Data.Time.Format (formatTime)
+import System.Locale (defaultTimeLocale)
 import Graphics.HsExif
 import Text.ParserCombinators.Parsec
 
@@ -57,12 +63,36 @@ parseString = do
 	contents <- many1 $ noneOf "%"
 	return $ StringContents contents
 
--- TODO not possible to get the current pango context myself?
-renderFrame :: Int -> Int -> PangoLayout -> PangoContext -> [(DisplayItem, TextStyle)] -> Render ()
-renderFrame width height text ctxt = mapM_ $ uncurry $ renderDisplayItem width height text ctxt
+data ImageInfo = ImageInfo
+	{
+		imgFilename :: String,
+		imgExifTags :: Map ExifTag ExifValue
+	}
 
-renderDisplayItem :: Int -> Int -> PangoLayout -> PangoContext -> DisplayItem -> TextStyle -> Render ()
-renderDisplayItem width height text ctxt displayItem textStyle = do
+getFormatElementValue :: ImageInfo -> FormatElement -> String
+getFormatElementValue imageInfo Filename = imgFilename imageInfo
+getFormatElementValue (ImageInfo _ exifTags) (ExifContents tag) =
+	maybe "No data" show $ Map.lookup tag exifTags
+getFormatElementValue (ImageInfo _ exifTags) (DateFormat dateFormatStr) = fromMaybe "No data"
+	$ liftM (formatTime defaultTimeLocale dateFormatStr) $ getDateTimeOriginal exifTags
+getFormatElementValue _ (StringContents str) = str
+
+getTextToRender :: DisplayItem -> ImageInfo -> String
+getTextToRender displayItem imageInfo = foldl' (\s fe -> getFormatElementValue imageInfo fe ++ s) "" formatElements
+	where formatElements = case parseFormat $ itemContents displayItem of
+		Right c -> c
+		-- TODO error in the GUI?
+		Left x -> error $ "Invalid item format: " ++ show x
+
+-- TODO not possible to get the current pango context myself?
+renderFrame :: Int -> Int -> ImageInfo -> PangoLayout -> PangoContext -> [(DisplayItem, TextStyle)] -> Render ()
+renderFrame width height imageInfo text ctxt = mapM_ $ uncurry $ renderDisplayItem width height imageInfo text ctxt
+
+renderDisplayItem :: Int -> Int -> ImageInfo -> PangoLayout -> PangoContext -> DisplayItem -> TextStyle -> Render ()
+renderDisplayItem width height imageInfo text ctxt displayItem textStyle = do
+	let textToRender = getTextToRender displayItem imageInfo
+	liftIO $ layoutSetText text textToRender
+
 	let marginX = floor $ fromIntegral width * marginXFromWidth displayItem
 	let marginY = floor $ fromIntegral width * marginYFromWidth displayItem
 	let textSizePoints = fromIntegral width * textSizeFromWidth displayItem
