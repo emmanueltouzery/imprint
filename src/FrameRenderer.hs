@@ -72,7 +72,11 @@ data ImageInfo = ImageInfo
 getFormatElementValue :: ImageInfo -> FormatElement -> String
 getFormatElementValue imageInfo Filename = imgFilename imageInfo
 getFormatElementValue (ImageInfo _ exifTags) (ExifContents tag) =
-	maybe "No data" show $ Map.lookup tag exifTags
+	maybe "No data" showFunction $ Map.lookup tag exifTags
+	where
+		showFunction
+			| tag `elem` [fnumber, exposureBiasValue] = formatAsFloatingPoint 2
+			| otherwise = show
 getFormatElementValue (ImageInfo _ exifTags) (DateFormat dateFormatStr) = fromMaybe "No data"
 	$ liftM (formatTime defaultTimeLocale dateFormatStr) $ getDateTimeOriginal exifTags
 getFormatElementValue _ (StringContents str) = str

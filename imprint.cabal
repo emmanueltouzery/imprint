@@ -22,7 +22,7 @@ executable imprint
                        gtk3 >= 0.12.5.7 && < 0.13,
                        cairo >= 0.12.5.3 && < 0.13,
                        svgcairo,
-                       hsexif == 0.5.*,
+                       hsexif >= 0.5.0.1 && < 0.6,
                        time == 1.4.*,
                        old-locale == 1.0.*,
                        directory == 1.2.*,
