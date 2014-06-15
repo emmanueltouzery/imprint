@@ -1,11 +1,65 @@
-module FrameRenderer (renderFrame, renderText) where
+{-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
+module FrameRenderer (renderFrame, renderText, parseFormat, FormatElement(..)) where
 
 import Graphics.UI.Gtk
 import Graphics.Rendering.Cairo hiding (width, height, x)
 import Control.Monad (liftM)
+import Graphics.HsExif
+import Text.ParserCombinators.Parsec
 
 import Settings
 import Helpers
+
+data FormatElement = StringContents String
+	| DateFormat String
+	| ExifContents ExifTag
+	| Filename
+	deriving (Show, Eq)
+
+parseFormat :: String -> Either String [FormatElement]
+parseFormat input = case parse parseFormatParsec "" input of
+	Left parseError -> Left $ show parseError
+	Right result -> Right result
+
+parseFormatParsec :: GenParser Char st [FormatElement]
+parseFormatParsec = many1 parseFormatElement
+
+parseFormatElement :: GenParser Char st FormatElement
+parseFormatElement = (try parseDate) <|> (try parseEscapedPercent) <|> (try parseFormatItem) <|> parseString
+
+parseDate :: GenParser Char st FormatElement
+parseDate = do
+	string "%date{"
+	dateFormat <- manyTill anyChar $ try $ char '}'
+	return $ DateFormat dateFormat
+
+parseEscapedPercent :: GenParser Char st FormatElement
+parseEscapedPercent = do
+	string "%%"
+	return $ StringContents "%"
+
+parseFormatItem :: GenParser Char st FormatElement
+parseFormatItem = do
+	string "%"
+	format <- many1 $ noneOf " \t\r\n"
+	return $ case format of
+		"file" -> Filename
+		"expo" -> ExifContents exposureTime
+		"aper" -> ExifContents fnumber
+		"iso" -> ExifContents isoSpeedRatings
+		"expo_bias" -> ExifContents exposureBiasValue
+		"make" -> ExifContents make
+		"model" -> ExifContents model
+		"soft" -> ExifContents software
+		"copy" -> ExifContents copyright
+		"focal35" -> ExifContents focalLengthIn35mmFilm
+		_ -> error $ "Unknown format type: " ++ format
+	
+parseString :: GenParser Char st FormatElement
+parseString = do
+	-- don't want to eat the %!
+	contents <- manyTill anyChar $ try $ char '%'
+	return $ StringContents contents
 
 -- TODO not possible to get the current pango context myself?
 renderFrame :: Int -> Int -> PangoLayout -> PangoContext -> [(DisplayItem, TextStyle)] -> Render ()
