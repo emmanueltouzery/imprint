@@ -15,6 +15,7 @@ runFormatParsingTests = do
 	testExif
 	testPercent
 	testComposite
+	testShouldFail
 
 testFile :: Spec
 testFile = it "parses a file criteria" $ do
@@ -35,6 +36,14 @@ testPercent = it "parses a percent sign" $ do
 testComposite :: Spec
 testComposite = it "parses a composite string" $ do
 	assertEqual' (Right $ [StringContents "picture ", Filename, StringContents ", taken on: ", DateFormat "%x HH:MM", StringContents ". f/", ExifContents fnumber]) $ parseFormat "picture %file, taken on: %date{%x HH:MM}. f/%aper"
+
+testShouldFail :: Spec
+testShouldFail = it "fails parsing a bad string" $ do
+	assertBool "fails" $ isLeft $ parseFormat "%ss"
+
+isLeft :: Either a b -> Bool
+isLeft (Left _) = True
+isLeft _        = False
 
 assertEqual' :: (Show a, Eq a) => a -> a -> Assertion
 assertEqual' = assertEqual "doesn't match"
