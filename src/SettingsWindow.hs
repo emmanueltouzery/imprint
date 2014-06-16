@@ -142,6 +142,19 @@ showSettingsWindow builder latestConfig = do
 	--prepareTextStylePreview builder latestConfig
 	widgetShowAll settingsWindow
 
+fakeImageInfo :: ImageInfo
+fakeImageInfo = ImageInfo "filename.jpg" $ Map.fromList [
+	(exposureTime, ExifText "1/160"),
+	(fnumber, ExifText "3.6"),
+	(isoSpeedRatings, ExifText "200"),
+	(exposureBiasValue, ExifText "0.00"),
+	(make, ExifText "SONY"),
+	(model, ExifText "NEX-3N"),
+	(software, ExifText "gimp-2.8.2"),
+	(copyright, ExifText "copyright 2014"),
+	(focalLengthIn35mmFilm, ExifText "32"),
+	(dateTimeOriginal, ExifText "2014:06:15 15:52:00")]
+
 comboIndexes :: [(Int, ItemPosition)]
 comboIndexes = [(0, TopLeft), (1, TopCenter), (2, TopRight),
 		(3, BottomLeft), (4, BottomCenter), (5, BottomRight)]
@@ -205,6 +218,14 @@ showCustomContentsDialog parent builder displayItemModel = do
 	set dialog [windowTransientFor := parent]
 	customContentsEntry <- builderGetObject builder castToEntry "customContentsEntry"
 	curContents <- liftM itemContents $ readModel displayItemModel
+
+	defaultDisplayItem <- readModel displayItemModel
+	parseResultLabel <- builderGetObject builder castToLabel "parseResultLabel"
+	customContentsEntry `on` editableChanged $ do
+		text <- entryGetText customContentsEntry
+		labelSetMarkup parseResultLabel $ case parseFormat text of
+			Right _ -> getTextToRender (defaultDisplayItem {itemContents = text}) fakeImageInfo
+			Left _ -> "<span color='red'><b>Incorrect syntax</b></span>"
 	entrySetText customContentsEntry curContents
 
 	completion <- entryCompletionNew
@@ -348,19 +369,7 @@ drawImageLayout drawingArea aspectRatioCombo displayItemsModel textStylesModel t
 	save
 	translate 0 top
 
-	let imageInfo = ImageInfo "filename.jpg" $ Map.fromList [
-		(exposureTime, ExifText "1/160"),
-		(fnumber, ExifText "3.6"),
-		(isoSpeedRatings, ExifText "200"),
-		(exposureBiasValue, ExifText "0.00"),
-		(make, ExifText "SONY"),
-		(model, ExifText "NEX-3N"),
-		(software, ExifText "gimp-2.8.2"),
-		(copyright, ExifText "copyright 2014"),
-		(focalLengthIn35mmFilm, ExifText "32"),
-		(dateTimeOriginal, ExifText "2014:06:15 15:52:00")]
-
 	displayItemsStylesInfo <- liftIO $ getDisplayItemsStyles displayItemsModel textStylesModel
-	renderFrame (floor effectiveW) (floor effectiveH) imageInfo text ctxt displayItemsStylesInfo
+	renderFrame (floor effectiveW) (floor effectiveH) fakeImageInfo text ctxt displayItemsStylesInfo
 	restore
 	return ()

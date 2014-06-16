@@ -10,7 +10,17 @@
         <property name="can_focus">False</property>
         <property name="orientation">vertical</property>
         <property name="spacing">2</property>
-        <property name="homogeneous">True</property>
+        <child>
+          <object class="GtkEntry" id="customContentsEntry">
+            <property name="visible">True</property>
+            <property name="can_focus">True</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">0</property>
+          </packing>
+        </child>
         <child internal-child="action_area">
           <object class="GtkButtonBox" id="dialog-action_area4">
             <property name="can_focus">False</property>
@@ -50,14 +60,37 @@
           </packing>
         </child>
         <child>
-          <object class="GtkEntry" id="customContentsEntry">
+          <object class="GtkLabel" id="label13">
             <property name="visible">True</property>
-            <property name="can_focus">True</property>
+            <property name="can_focus">False</property>
+            <property name="label" translatable="yes">&lt;small&gt;Using this dialog you can specify a custom format for the data to display. Special placeholders will be replaced by dynamic data from the picture (for install date and so on).
+The place holders start with the '%' character. Type that character and a popup will appear offering you a list.
+
+Dates are special because they can be formatted in many ways and so for a date you first use the %date placeholder but then inside a {} section you specify how to format the date. Start with %date{} then type '%' in-between the {} and a popup will guide you.
+
+&lt;u&gt;Examples&lt;/u&gt;:
+* ISO %iso, f/%aper
+* %date{%H:%M:%S}, ISO %iso&lt;/small&gt;</property>
+            <property name="use_markup">True</property>
+            <property name="justify">fill</property>
+            <property name="wrap">True</property>
           </object>
           <packing>
             <property name="expand">False</property>
             <property name="fill">True</property>
-            <property name="position">1</property>
+            <property name="position">2</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkLabel" id="parseResultLabel">
+            <property name="visible">True</property>
+            <property name="can_focus">False</property>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="pack_type">end</property>
+            <property name="position">3</property>
           </packing>
         </child>
       </object>

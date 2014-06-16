@@ -1,5 +1,5 @@
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
-module FrameRenderer (renderFrame, renderText, parseFormat, FormatElement(..), ImageInfo(..)) where
+module FrameRenderer (renderFrame, renderText, parseFormat, FormatElement(..), ImageInfo(..), getTextToRender) where
 
 import Graphics.UI.Gtk
 import Graphics.Rendering.Cairo hiding (width, height, x)
