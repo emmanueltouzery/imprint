@@ -48,10 +48,10 @@ parseFormatItem :: GenParser Char st FormatElement
 parseFormatItem = do
 	string "%"
 	do { try (string "file"); return Filename }
+		<|> do { try (string "expo_bias"); return $ ExifContents exposureBiasValue }
 		<|> do { try (string "expo"); return $ ExifContents exposureTime }
 		<|> do { try (string "aper"); return $ ExifContents fnumber }
 		<|> do { try (string "iso"); return $ ExifContents isoSpeedRatings }
-		<|> do { try (string "expo_bias"); return $ ExifContents exposureBiasValue }
 		<|> do { try (string "make"); return $ ExifContents make }
 		<|> do { try (string "model"); return $ ExifContents model }
 		<|> do { try (string "soft"); return $ ExifContents software }
