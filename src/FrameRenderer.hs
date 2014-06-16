@@ -82,7 +82,7 @@ getFormatElementValue (ImageInfo _ exifTags) (DateFormat dateFormatStr) = fromMa
 getFormatElementValue _ (StringContents str) = str
 
 getTextToRender :: DisplayItem -> ImageInfo -> String
-getTextToRender displayItem imageInfo = foldl' (\s fe -> getFormatElementValue imageInfo fe ++ s) "" formatElements
+getTextToRender displayItem imageInfo = foldl' (\s fe -> s ++ getFormatElementValue imageInfo fe) "" formatElements
 	where formatElements = case parseFormat $ itemContents displayItem of
 		Right c -> c
 		-- TODO error in the GUI?
