@@ -47,6 +47,9 @@ showSettingsWindow builder latestConfig = do
 			comboValues = contentsComboData,
 			defaultIndex = length contentsComboData - 1
 		}
+	contentsCombo `on` changed $ do
+		comboPos <- comboBoxGetActive contentsCombo
+		when (comboPos == length contentsComboData-1) $ getCurItem >>= showCustomContentsDialog settingsWindow builder
 
 	textLayout <- layoutEmpty ctxt
 	textLayout `layoutSetText` "2014-04-01"
@@ -158,8 +161,63 @@ contentsComboData = [
 	("Software", "%soft"),
 	("Copyright", "%copy"),
 	("Focal length (35mm)", "%focal35"),
-	("Advanced...", "")
+	("Advanced...", "advanced")
 	]
+
+showCustomContentsDialog :: WindowClass a => a -> Builder -> Model DisplayItem -> IO ()
+showCustomContentsDialog parent builder displayItemModel = do
+	dialog <- builderGetObject builder castToDialog "customContentsDialog"
+	set dialog [windowTransientFor := parent]
+	customContentsEntry <- builderGetObject builder castToEntry "customContentsEntry"
+	curContents <- liftM itemContents $ readModel displayItemModel
+	entrySetText customContentsEntry curContents
+
+	completion <- entryCompletionNew
+	let completionData = contentsComboData ++ [("% sign", "%%")]
+	completionStore <- listStoreNew completionData
+	entryCompletionSetModel completion $ Just completionStore
+	cellValue <- cellRendererTextNew
+	cellLayoutPackStart completion cellValue True
+	cellLayoutSetAttributes completion cellValue completionStore
+		(\val -> [cellText := snd val])
+	cellDesc <- cellRendererTextNew
+	cellLayoutPackStart completion cellDesc True
+	cellLayoutSetAttributes completion cellDesc completionStore
+		(\val -> [cellText := fst val])
+	entryCompletionSetMinimumKeyLength completion 1
+	entryCompletionSetMatchFunc completion $
+		customContentsCompletionCb completionData customContentsEntry
+	entrySetCompletion customContentsEntry completion
+	completion `on` matchSelected $ \_ iter -> do
+		let candidate = completionData !! listStoreIterToIndex iter
+		textSoFar <- entryGetText customContentsEntry
+		cursorPosBefore <- get customContentsEntry entryCursorPosition
+		let (beforeCursor, afterCursor) = splitAt cursorPosBefore textSoFar
+		textWhichGotCompleted <- liftM fromJust $ textBeforeCursorFromPercent customContentsEntry
+		let lengthBeforeCompletion = length beforeCursor - length textWhichGotCompleted
+		let newText = take lengthBeforeCompletion textSoFar
+			++ snd candidate ++ afterCursor
+		entrySetText customContentsEntry newText
+		let newPos = lengthBeforeCompletion + length (snd candidate)
+		editableSetPosition customContentsEntry newPos
+		return True
+
+	dialogRun dialog
+	widgetHide dialog
+
+textBeforeCursorFromPercent :: Entry -> IO (Maybe String)
+textBeforeCursorFromPercent entry = do
+	cursorPos <- get entry entryCursorPosition
+	typed <- liftM (take cursorPos) $ entryGetText entry
+	return $ find (isPrefixOf "%") $ tail $ reverse $ tails typed
+
+customContentsCompletionCb :: [(String,String)] -> Entry -> String -> TreeIter -> IO Bool
+customContentsCompletionCb completionModel entry _ iter = do
+	let candidate = completionModel !! listStoreIterToIndex iter
+	beforePercent <- textBeforeCursorFromPercent entry
+	case beforePercent of
+		Nothing -> return False
+		Just fromPercent -> return $ fromPercent `isPrefixOf` snd candidate
 
 changeDisplayItemPosition :: Window -> ComboBox -> ListModel DisplayItem -> IO ()
 changeDisplayItemPosition parent displayItemPositionCombo displayItemsModel = do

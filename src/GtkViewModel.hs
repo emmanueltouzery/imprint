@@ -198,3 +198,7 @@ instance (ComboBoxClass a, Eq b) => Bindable (ComboBindInfo a b) b where
 			let selectedValue = snd $ values !! idx
 			cb selectedValue
 		>> return ()
+
+instance Bindable Entry String where
+	setWidgetValue w v = entrySetText w v
+	registerWidgetListener w cb = (w `on` editableChanged $ entryGetText w >>= cb) >> return ()
