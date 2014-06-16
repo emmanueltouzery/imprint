@@ -6,7 +6,7 @@ import Graphics.Rendering.Cairo hiding (width, height, x)
 import Data.IORef
 import Data.AppSettings (getSetting', setSetting, Conf)
 import Control.Monad (liftM, when)
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, isJust)
 import Data.List
 import Graphics.HsExif
 import qualified Data.Map as Map
@@ -164,6 +164,41 @@ contentsComboData = [
 	("Advanced...", "advanced")
 	]
 
+completionDataDate :: [(String, String)]
+completionDataDate = [
+	("Date formatted in your system language", "%x"),
+	("Hours and minutes", "%R"),
+	("Hours, minutes and seconds", "%X"),
+	("Hour of the day (24h). 00-23", "%H"),
+	("Hour of the day (24h). 0-23", "%k"),
+	("Hour of half-day (12h). 01-12", "%I"),
+	("Hour of half-day (12h). 1-12", "%l"),
+	("Minute of hour, 00-59", "%M"),
+	("Second of minute, 00-60", "%S"),
+	("Year", "%Y"),
+	("Year of century, 00-99", "%y"),
+	("Month name, long form, January-December", "%B"),
+	("Month name, short form, Jan-Dec", "%b"),
+	("Month of year, 01-12", "%m"),
+	("Day of month, 01-31", "%d"),
+	("Day of month, 1-31", "%e"),
+	("Day of week, short form, Sun-Sat", "%a"),
+	("Day of week, long form, Sunday-Saturday", "%A")
+	]
+
+data CompletionRecordType = NormalCompletion | DateCompletion
+	deriving (Eq, Show)
+
+data CompletionRecord = CompletionRecord
+	{
+		complRecordType :: CompletionRecordType,
+		complRecordDesc :: String,
+		complRecordValue :: String
+	} deriving Show
+
+isDateRecord :: CompletionRecord -> Bool
+isDateRecord (CompletionRecord t _ _) = t == DateCompletion
+
 showCustomContentsDialog :: WindowClass a => a -> Builder -> Model DisplayItem -> IO ()
 showCustomContentsDialog parent builder displayItemModel = do
 	dialog <- builderGetObject builder castToDialog "customContentsDialog"
@@ -173,17 +208,20 @@ showCustomContentsDialog parent builder displayItemModel = do
 	entrySetText customContentsEntry curContents
 
 	completion <- entryCompletionNew
-	let completionData = contentsComboData ++ [("% sign", "%%")]
+	let completionData = fmap (uncurry $ CompletionRecord NormalCompletion) contentsComboData 
+				++ [CompletionRecord NormalCompletion "% sign" "%%"] 
+				++ fmap (uncurry $ CompletionRecord DateCompletion) completionDataDate
+				++ [CompletionRecord DateCompletion "% sign" "%%"] 
 	completionStore <- listStoreNew completionData
 	entryCompletionSetModel completion $ Just completionStore
 	cellValue <- cellRendererTextNew
 	cellLayoutPackStart completion cellValue True
 	cellLayoutSetAttributes completion cellValue completionStore
-		(\val -> [cellText := snd val])
+		(\val -> [cellText := complRecordDesc val])
 	cellDesc <- cellRendererTextNew
 	cellLayoutPackStart completion cellDesc True
 	cellLayoutSetAttributes completion cellDesc completionStore
-		(\val -> [cellText := fst val])
+		(\val -> [cellText := complRecordValue val])
 	entryCompletionSetMinimumKeyLength completion 1
 	entryCompletionSetMatchFunc completion $
 		customContentsCompletionCb completionData customContentsEntry
@@ -193,31 +231,36 @@ showCustomContentsDialog parent builder displayItemModel = do
 		textSoFar <- entryGetText customContentsEntry
 		cursorPosBefore <- get customContentsEntry entryCursorPosition
 		let (beforeCursor, afterCursor) = splitAt cursorPosBefore textSoFar
-		textWhichGotCompleted <- liftM fromJust $ textBeforeCursorFromPercent customContentsEntry
+		textWhichGotCompleted <- liftM fromJust $ textBeforeCursorFromSymbol "%" customContentsEntry
 		let lengthBeforeCompletion = length beforeCursor - length textWhichGotCompleted
 		let newText = take lengthBeforeCompletion textSoFar
-			++ snd candidate ++ afterCursor
+			++ complRecordValue candidate ++ afterCursor
 		entrySetText customContentsEntry newText
-		let newPos = lengthBeforeCompletion + length (snd candidate)
+		let newPos = lengthBeforeCompletion + length (complRecordValue candidate)
 		editableSetPosition customContentsEntry newPos
 		return True
 
 	dialogRun dialog
 	widgetHide dialog
 
-textBeforeCursorFromPercent :: Entry -> IO (Maybe String)
-textBeforeCursorFromPercent entry = do
+textBeforeCursorFromSymbol :: String -> Entry -> IO (Maybe String)
+textBeforeCursorFromSymbol symbol entry = do
 	cursorPos <- get entry entryCursorPosition
 	typed <- liftM (take cursorPos) $ entryGetText entry
-	return $ find (isPrefixOf "%") $ tail $ reverse $ tails typed
+	return $ find (isPrefixOf symbol) $ tail $ reverse $ tails typed
 
-customContentsCompletionCb :: [(String,String)] -> Entry -> String -> TreeIter -> IO Bool
+customContentsCompletionCb :: [CompletionRecord] -> Entry -> String -> TreeIter -> IO Bool
 customContentsCompletionCb completionModel entry _ iter = do
 	let candidate = completionModel !! listStoreIterToIndex iter
-	beforePercent <- textBeforeCursorFromPercent entry
+	beforePercent <- textBeforeCursorFromSymbol "%" entry
+	beforeDate <- textBeforeCursorFromSymbol "%date{" entry
+	let inDateContext = isJust beforeDate && (not $ "}" `isInfixOf` (fromJust beforeDate))
 	case beforePercent of
 		Nothing -> return False
-		Just fromPercent -> return $ fromPercent `isPrefixOf` snd candidate
+		Just fromPercent | inDateContext ->
+			return $ isDateRecord candidate && fromPercent `isPrefixOf` complRecordValue candidate
+		Just fromPercent -> 
+			return $ (not $ isDateRecord candidate) && fromPercent `isPrefixOf` complRecordValue candidate
 
 changeDisplayItemPosition :: Window -> ComboBox -> ListModel DisplayItem -> IO ()
 changeDisplayItemPosition parent displayItemPositionCombo displayItemsModel = do
