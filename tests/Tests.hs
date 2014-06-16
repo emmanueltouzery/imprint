@@ -16,6 +16,7 @@ runFormatParsingTests = do
 	testPercent
 	testComposite
 	testShouldFail
+	testShouldFail2
 
 testFile :: Spec
 testFile = it "parses a file criteria" $ do
@@ -40,6 +41,10 @@ testComposite = it "parses a composite string" $ do
 testShouldFail :: Spec
 testShouldFail = it "fails parsing a bad string" $ do
 	assertBool "fails" $ isLeft $ parseFormat "%ss"
+
+testShouldFail2 :: Spec
+testShouldFail2 = it "fails parsing a bad string" $ do
+	assertBool "fails" $ isLeft $ parseFormat "%file %ss"
 
 isLeft :: Either a b -> Bool
 isLeft (Left _) = True

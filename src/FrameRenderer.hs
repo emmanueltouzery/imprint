@@ -28,7 +28,10 @@ parseFormat input = case parse parseFormatParsec "" input of
 	Right result -> Right result
 
 parseFormatParsec :: GenParser Char st [FormatElement]
-parseFormatParsec = many1 parseFormatElement
+parseFormatParsec = do
+	r <- many1 parseFormatElement
+	eof
+	return r
 
 parseFormatElement :: GenParser Char st FormatElement
 parseFormatElement = (try parseDate) <|> (try parseEscapedPercent) <|> (try parseFormatItem) <|> parseString
@@ -47,16 +50,17 @@ parseEscapedPercent = do
 parseFormatItem :: GenParser Char st FormatElement
 parseFormatItem = do
 	string "%"
-	do { try (string "file"); return Filename }
-		<|> do { try (string "expo_bias"); return $ ExifContents exposureBiasValue }
-		<|> do { try (string "expo"); return $ ExifContents exposureTime }
-		<|> do { try (string "aper"); return $ ExifContents fnumber }
-		<|> do { try (string "iso"); return $ ExifContents isoSpeedRatings }
-		<|> do { try (string "make"); return $ ExifContents make }
-		<|> do { try (string "model"); return $ ExifContents model }
-		<|> do { try (string "soft"); return $ ExifContents software }
-		<|> do { try (string "copy"); return $ ExifContents copyright }
-		<|> do { try (string "focal35"); return $  ExifContents focalLengthIn35mmFilm }
+	(string "file" >> return Filename)
+		<|> (try (string "expo_bias") >> return (ExifContents exposureBiasValue))
+		<|> (try (string "expo") >> return (ExifContents exposureTime))
+		<|> (try (string "aper") >> return (ExifContents fnumber))
+		<|> (try (string "iso") >> return (ExifContents isoSpeedRatings))
+		<|> (try (string "make") >> return (ExifContents make))
+		<|> (try (string "model") >> return (ExifContents model))
+		<|> (try (string "soft") >> return (ExifContents software))
+		<|> (try (string "copy") >> return (ExifContents copyright))
+		<|> (try (string "focal35") >> return (ExifContents focalLengthIn35mmFilm))
+		<?> "known format item"
 	
 parseString :: GenParser Char st FormatElement
 parseString = do
