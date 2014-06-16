@@ -165,15 +165,15 @@ contentsComboData = [
 	("Date", "%date{%x}"),
 	("Date and time", "%date{%x %R}"),
 	("Date and time, seconds", "%date{%x %X}"),
-	("Exposition time", "%expo"),
-	("Aperture", "%aper"),
-	("ISO", "%iso"),
+	("Exposition time", "%expos"),
+	("Aperture", "f/%aper"),
+	("ISO", "ISO %iso"),
 	("Exposure bias", "%expo_bias"),
 	("Make", "%make"),
 	("Model", "%model"),
 	("Software", "%soft"),
-	("Copyright", "%copy"),
-	("Focal length (35mm)", "%focal35"),
+	("Copyright", "©%copy"),
+	("Focal length (35mm)", "%focal35mm"),
 	("Advanced...", "advanced")
 	]
 
