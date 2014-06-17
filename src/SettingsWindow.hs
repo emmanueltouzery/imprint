@@ -29,8 +29,6 @@ showSettingsWindow builder latestConfig = do
 
 	let getCurItem = liftM fromJust $ listModelGetCurrentItem displayItemsModel
 
-	-- TODO create bottom-right if there is no display item at all
-
 	settingsWindow <- builderGetObject builder castToWindow "settings_window"
 	imageLayout <- builderGetObject builder castToDrawingArea "image_layout"
 	
