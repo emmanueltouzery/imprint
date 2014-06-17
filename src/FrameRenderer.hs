@@ -50,7 +50,7 @@ parseEscapedPercent = do
 parseFormatItem :: GenParser Char st FormatElement
 parseFormatItem = do
 	string "%"
-	(string "file" >> return Filename)
+	(try (string "file") >> return Filename)
 		<|> (try (string "expo_bias") >> return (ExifContents exposureBiasValue))
 		<|> (try (string "expo") >> return (ExifContents exposureTime))
 		<|> (try (string "aper") >> return (ExifContents fnumber))
