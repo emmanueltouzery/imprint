@@ -51,6 +51,9 @@ isDateRecord (CompletionRecord t _ _) = t == DateCompletion
 
 data CustomContentsDialogInfo = CustomContentsDialogInfo (IORef (Maybe (ConnectId Button)))
 
+-- TODO I use in several places that pattern
+-- of disconnecting the signal for the ok button
+-- of a dialog. Make some nice wrapper.
 prepareCustomContentsDialog :: IO CustomContentsDialogInfo
 prepareCustomContentsDialog = do
 	okSignalRef <- newIORef Nothing
