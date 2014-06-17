@@ -46,6 +46,5 @@ placeHolders = [
 	PlaceHolder "Model" "%model" "%model",
 	PlaceHolder "Software" "%soft" "%soft",
 	PlaceHolder "Copyright" "%copy" "©%copy",
-	PlaceHolder "Focal length (35mm)" "%focal35" "%focal35mm",
-	PlaceHolder "Advanced..." "advanced" "advanced"
+	PlaceHolder "Focal length (35mm)" "%focal35" "%focal35mm"
 	]

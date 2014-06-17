@@ -41,3 +41,7 @@ dialogYesNo parent msg = do
 
 whenM :: Monad m => m Bool -> m () -> m ()
 whenM test action = test >>= \t -> if t then action else return ()
+
+isLeft :: Either a b -> Bool
+isLeft (Left _) = True
+isLeft _        = False

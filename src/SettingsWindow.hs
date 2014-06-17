@@ -6,7 +6,7 @@ import Graphics.Rendering.Cairo hiding (width, height, x)
 import Data.IORef
 import Data.AppSettings (getSetting', setSetting, Conf)
 import Control.Monad (liftM, when)
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, isJust)
 import Data.List
 
 import TextStylesSettings
@@ -40,16 +40,15 @@ showSettingsWindow builder latestConfig = do
 	-- TODO turns out too small, workaround, forced height request of 30px
 	-- in the gtkbuilder file...
 	contentsCombo <- builderGetObject builder castToComboBox "contentscombo"
-	comboBoxSetModelText contentsCombo
+	cId <- newIORef Nothing
 	let comboContentsBindInfo = ComboBindInfo
 		{
 			comboWidget = contentsCombo,
 			comboValues = contentsComboData,
-			defaultIndex = length contentsComboData - 1
+			comboExtraValues = ["Advanced"],
+			defaultIndex = length contentsComboData,
+			comboConnectId = cId
 		}
-	contentsCombo `on` changed $ do
-		comboPos <- comboBoxGetActive contentsCombo
-		when (comboPos == length contentsComboData-1) $ getCurItem >>= showCustomContentsDialog settingsWindow builder
 
 	textLayout <- layoutEmpty ctxt
 	textLayout `layoutSetText` "2014-04-01"
@@ -114,7 +113,24 @@ showSettingsWindow builder latestConfig = do
 					comboBoxSelectPosition displayItemPositionCombo newPos
 					listModelRemoveItem displayItemsModel itemToRemove
 
+	customContentsDialogInfo <- prepareCustomContentsDialog
+
+	contentsAdvancedEdit <- builderGetObject builder castToButton "contentsAdvancedEdit"
+	contentsAdvancedEdit `on` buttonActivated $
+		getCurItem >>= showCustomContentsDialog settingsWindow builder customContentsDialogInfo
+	
+	let showHideAdvancedEdit = do
+		idx <- comboBoxGetActive contentsCombo
+		-- is advanced picked in the contents combo?
+		if idx == defaultIndex comboContentsBindInfo
+			then widgetShow contentsAdvancedEdit
+			else widgetHide contentsAdvancedEdit
+
+	contentsComboChangedConnectId <- newIORef Nothing
+
 	addListModelCurrentItemObserver displayItemsModel $ \currentDisplayItemModel -> do
+		comboConnId <- readIORef contentsComboChangedConnectId
+		when (isJust comboConnId) $ signalDisconnect $ fromJust comboConnId
 		putStrLn "current display item changed!"
 		bindModel currentDisplayItemModel marginXFromWidthL horMarginRangeBindInfo
 		bindModel currentDisplayItemModel textSizeFromWidthL scaleRangeBindInfo
@@ -122,10 +138,22 @@ showSettingsWindow builder latestConfig = do
 		bindModel currentDisplayItemModel itemContentsL comboContentsBindInfo
 		widgetQueueDraw imageLayout
 		widgetQueueDraw textStylePreview
+		showHideAdvancedEdit
 		-- this is so that we redraw when the current item is modified.
 		addModelObserver currentDisplayItemModel $ \_ -> do
 			widgetQueueDraw imageLayout
 			widgetQueueDraw textStylePreview
+			showHideAdvancedEdit
+
+		-- this at the end so that it does not trigger
+		-- when we open the dialog, but only in case
+		-- of an action from a real user.
+		newComboConnectId <- contentsCombo `on` changed $ do
+			comboPos <- comboBoxGetActive contentsCombo
+			when (comboPos == length contentsComboData) $
+				getCurItem >>= showCustomContentsDialog settingsWindow builder customContentsDialogInfo
+		modifyIORef contentsComboChangedConnectId $ const $ Just newComboConnectId
+
 
 	readListModel displayItemsModel >>= listModelSetCurrentItem displayItemsModel . head
 

@@ -3,13 +3,16 @@ module CustomContentsDialog where
 
 import Data.Maybe (isJust, fromJust)
 import Data.List
-import Control.Monad (liftM)
+import Control.Monad (liftM, when)
 import Graphics.UI.Gtk
+import Control.Lens hiding (set)
+import Data.IORef
 
 import SettingsWindowData
 import GtkViewModel
 import FrameRenderer
 import Settings
+import Helpers
 
 completionDataDate :: [(String, String)]
 completionDataDate = [
@@ -46,20 +49,32 @@ data CompletionRecord = CompletionRecord
 isDateRecord :: CompletionRecord -> Bool
 isDateRecord (CompletionRecord t _ _) = t == DateCompletion
 
-showCustomContentsDialog :: WindowClass a => a -> Builder -> Model DisplayItem -> IO ()
-showCustomContentsDialog parent builder displayItemModel = do
+data CustomContentsDialogInfo = CustomContentsDialogInfo (IORef (Maybe (ConnectId Button)))
+
+prepareCustomContentsDialog :: IO CustomContentsDialogInfo
+prepareCustomContentsDialog = do
+	okSignalRef <- newIORef Nothing
+	return $ CustomContentsDialogInfo okSignalRef
+
+showCustomContentsDialog :: WindowClass a => a -> Builder -> CustomContentsDialogInfo -> Model DisplayItem -> IO ()
+showCustomContentsDialog parent builder (CustomContentsDialogInfo okSigRef) displayItemModel = do
 	dialog <- builderGetObject builder castToDialog "customContentsDialog"
 	set dialog [windowTransientFor := parent]
 	customContentsEntry <- builderGetObject builder castToEntry "customContentsEntry"
 	curContents <- liftM itemContents $ readModel displayItemModel
 
+	okBtn <- builderGetObject builder castToButton "customContentsOK"
+	cancelBtn <- builderGetObject builder castToButton "customContentsCancel"
+
 	defaultDisplayItem <- readModel displayItemModel
 	parseResultLabel <- builderGetObject builder castToLabel "parseResultLabel"
 	customContentsEntry `on` editableChanged $ do
 		text <- entryGetText customContentsEntry
-		labelSetMarkup parseResultLabel $ case parseFormat text of
-			Right _ -> getTextToRender (defaultDisplayItem {itemContents = text}) fakeImageInfo
-			Left _ -> "<span color='red'><b>Incorrect syntax</b></span>"
+		let isParseOk = not $ isLeft $ parseFormat text 
+		labelSetMarkup parseResultLabel $ if isParseOk
+			then getTextToRender (defaultDisplayItem {itemContents = text}) fakeImageInfo
+			else "<span color='red'><b>Incorrect syntax</b></span>"
+		widgetSetSensitivity okBtn isParseOk
 	entrySetText customContentsEntry curContents
 
 	completion <- entryCompletionNew
@@ -94,6 +109,15 @@ showCustomContentsDialog parent builder displayItemModel = do
 		let newPos = lengthBeforeCompletion + length (complRecordValue candidate)
 		editableSetPosition customContentsEntry newPos
 		return True
+
+	okSig <- readIORef okSigRef
+	when (isJust okSig) $ signalDisconnect $ fromJust okSig
+	newOkSig <- okBtn `on` buttonActivated $ do
+		newText <- entryGetText customContentsEntry
+		modifyModel displayItemModel $ itemContentsL .~ newText
+		widgetHide dialog
+	writeIORef okSigRef (Just newOkSig)
+	cancelBtn `on` buttonActivated $ widgetHide dialog
 
 	dialogRun dialog
 	widgetHide dialog

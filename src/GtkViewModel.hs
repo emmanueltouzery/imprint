@@ -1,3 +1,4 @@
+{-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 {-# LANGUAGE RankNTypes, MultiParamTypeClasses, FlexibleInstances #-}
 
 module GtkViewModel (
@@ -27,7 +28,7 @@ import Control.Lens
 import Graphics.UI.Gtk
 import Control.Monad (liftM, when)
 import Data.List
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isJust, fromJust)
 
 import Helpers
 import Settings (ColorRgba)
@@ -179,25 +180,49 @@ instance (RangeClass a) => Bindable (RangeBindInfo a) Double where
 			liftM (/100) (adjustmentGetValue adj) >>= cb
 		>> return ()
 
+-- for the combo bind info, you can give a defaultIndex, which will
+-- be used in case the model is set to a value which is not contained
+-- in the comboValues.
+-- That is useful in combination with comboExtraValues, where you can
+-- list combo entries which won't be managed by the binding.
+-- Entries in comboExtraValues won't trigger any changes to the model.
+-- If you want to do something when they are picked, you must listen
+-- to events from the combo by hand.
+-- That is useful for instance for combos containing options like..
+-- value1, value2, value3, OTHER.
+-- OTHER would be in a comboExtraValues and would not be in the
+-- comboValues. Then when the user clicks OTHER you could open a dialog,
+-- and so on.
+--
+-- The comboConnectId is to allow us to change the model which is
+-- bound to a specific combo. If it's not Nothing, we'll unbind
+-- before binding again.
 data ComboBindInfo a b = ComboBindInfo
 	{
 		comboWidget :: a,
 		comboValues :: [(String,b)],
-		defaultIndex :: Int
+		comboExtraValues :: [String],
+		defaultIndex :: Int,
+		comboConnectId :: IORef (Maybe (ConnectId a))
 	}
 
 instance (ComboBoxClass a, Eq b) => Bindable (ComboBindInfo a b) b where
-	initBind (ComboBindInfo combo values _) _ = 
+	initBind (ComboBindInfo combo values extraValues _ connectIdRef) _ = do
+		connectId <- readIORef connectIdRef
+		when (isJust connectId) $ signalDisconnect (fromJust connectId)
+		comboBoxSetModelText combo
 		mapM_ (comboBoxAppendText combo . fst) values
-	setWidgetValue (ComboBindInfo combo values defaultIdx) curValue = do
+		mapM_ (comboBoxAppendText combo) extraValues
+	setWidgetValue (ComboBindInfo combo values _ defaultIdx _) curValue = do
 		let idx = fromMaybe defaultIdx $ findIndex ((==curValue) . snd) values
 		comboBoxSetActive combo idx
-	registerWidgetListener (ComboBindInfo combo values _) cb = do
-		combo `on` changed $ do
+	registerWidgetListener (ComboBindInfo combo values _ _ connectIdRef) cb = do
+		cId <- combo `on` changed $ do
 			idx <- comboBoxGetActive combo
-			let selectedValue = snd $ values !! idx
-			cb selectedValue
-		>> return ()
+			when (idx < length values) $ do
+				let selectedValue = snd $ values !! idx
+				cb selectedValue
+		modifyIORef connectIdRef $ const (Just cId)
 
 instance Bindable Entry String where
 	setWidgetValue w v = entrySetText w v
