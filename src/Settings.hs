@@ -54,7 +54,7 @@ data ItemPosition = TopLeft
 	| BottomLeft
 	| BottomCenter
 	| BottomRight
-	deriving (Show, Read, Eq)
+	deriving (Show, Read, Eq, Ord)
 
 data DisplayItem = DisplayItem
 	{

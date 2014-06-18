@@ -725,7 +725,7 @@ Dates are special because they can be formatted in many ways and so for a date y
                 <property name="orientation">vertical</property>
                 <property name="layout_style">start</property>
                 <child>
-                  <object class="GtkButton" id="button2">
+                  <object class="GtkButton" id="default_settings_button">
                     <property name="label" translatable="yes">Defaults</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>

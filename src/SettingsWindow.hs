@@ -4,10 +4,11 @@ module SettingsWindow where
 import Graphics.UI.Gtk hiding (styleSet)
 import Graphics.Rendering.Cairo hiding (width, height, x)
 import Data.IORef
-import Data.AppSettings (getSetting', setSetting, Conf)
+import Data.AppSettings (getSetting', setSetting, Conf, DefaultConfig(..))
 import Control.Monad (liftM, when)
 import Data.Maybe (fromJust, isJust)
 import Data.List
+import qualified Data.Map as Map
 
 import TextStylesSettings
 import Settings
@@ -34,6 +35,9 @@ showSettingsWindow builder latestConfig = do
 	
 	aspectRatioCombo <- builderGetObject builder castToComboBox "aspect_ratio_combo"
 	aspectRatioCombo `on` changed $ widgetQueueDraw imageLayout
+
+	defaultSettingsButton <- builderGetObject builder castToButton "default_settings_button"
+	defaultSettingsButton `on` buttonActivated $ resetToDefaults displayItemsModel textStylesModel
 
 	-- TODO turns out too small, workaround, forced height request of 30px
 	-- in the gtkbuilder file...
@@ -262,3 +266,39 @@ drawImageLayout drawingArea aspectRatioCombo displayItemsModel textStylesModel t
 	renderFrame (floor effectiveW) (floor effectiveH) fakeImageInfo text ctxt displayItemsStylesInfo
 	restore
 	return ()
+
+resetToDefaults :: ListModel DisplayItem -> ListModel TextStyle -> IO ()
+resetToDefaults displayItemsModel textStylesModel = do
+	-- Add text styles present in default, but not currently (by id)
+	-- and overwrite those with same id from default
+	textStylesModelsByKey <- readListModel textStylesModel >>= makeHashByKey styleId
+	mapM_ (addOrOverwrite textStylesModel textStylesModelsByKey styleId) defaultTextStyles
+	-- Add contents in new positions (topleft itd)
+	-- Overwrite contents in same positions
+	curDisplayItemsByKey <- readListModel displayItemsModel >>= makeHashByKey position
+	mapM_ (addOrOverwrite displayItemsModel curDisplayItemsByKey position) defaultDisplayItems
+	-- Remove extra contents
+	mapM_ (removeIfNotPresentByDefault displayItemsModel position defaultDisplayItems)
+		$ Map.toList curDisplayItemsByKey
+	-- Remove extra styles
+	mapM_ (removeIfNotPresentByDefault textStylesModel styleId defaultTextStyles)
+		$ Map.toList textStylesModelsByKey
+	where
+		(DefaultConfig defaultConf) = getAllSettings
+		defaultDisplayItems = getSetting' defaultConf displayItems
+		defaultTextStyles = getSetting' defaultConf textStyles
+
+-- TODO must be able to make this look nicer...?
+makeHashByKey :: Ord b => (a -> b) -> [Model a] -> IO (Map.Map b (Model a))
+makeHashByKey getKey = liftM Map.fromList . mapM (\x -> (liftM getKey $ readModel x) >>= return . flip (,) x)
+
+addOrOverwrite :: Ord b => ListModel a -> Map.Map b (Model a) -> (a -> b) -> a -> IO ()
+addOrOverwrite listModel modelItemsByKey getKey newItem = do
+	case Map.lookup (getKey newItem) modelItemsByKey of
+		Nothing -> makeModel newItem >>= listModelAddItem listModel
+		Just curModel -> (modifyModel curModel $ const newItem) >> return ()
+
+removeIfNotPresentByDefault :: (Eq a, Eq b) => ListModel a -> (a -> b) -> [a] -> (b, Model a) -> IO ()
+removeIfNotPresentByDefault listModel getKey defaultList (key, value) = do
+	when (not . isJust $ find ((==key) . getKey) defaultList) $
+		listModelRemoveItem listModel value
