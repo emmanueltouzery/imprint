@@ -45,7 +45,7 @@ getCurrentDisplayItem displayItemsModel = listModelGetCurrentItem displayItemsMo
 -- one ItemPosition. So I find the display item by the position
 -- and I don't have to worry whether the item was modified or not,
 -- I know I'll find it.
-showTextStyleListDialog :: Builder -> ListModel DisplayItem -> ListModel TextStyle -> Window -> IO ()
+showTextStyleListDialog :: Builder -> ListModel DisplayItem -> ListModel TextStyle -> Dialog -> IO ()
 showTextStyleListDialog builder displayItemsModel textStylesModel parent = do
 	activeItemSvg <- svgNewFromFile "active_item.svg"
 	dialog <- builderGetObject builder castToDialog "dialog1"

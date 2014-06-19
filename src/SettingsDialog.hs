@@ -1,5 +1,5 @@
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
-module SettingsWindow where
+module SettingsDialog where
 
 import Graphics.UI.Gtk hiding (styleSet)
 import Graphics.Rendering.Cairo hiding (width, height, x)
@@ -18,10 +18,8 @@ import Helpers
 import CustomContentsDialog
 import SettingsWindowData
 
--- TODO make it a dialog?
-
-showSettingsWindow :: Builder -> IORef Conf -> IO ()
-showSettingsWindow builder latestConfig = do
+prepareSettingsDialog :: Builder -> IORef Conf -> IO Dialog
+prepareSettingsDialog builder latestConfig = do
 	ctxt <- cairoCreateContext Nothing -- TODO creating cairo ctxt all over the place...
 
 	startConf <- readIORef latestConfig
@@ -30,7 +28,7 @@ showSettingsWindow builder latestConfig = do
 
 	let getCurItem = liftM fromJust $ listModelGetCurrentItem displayItemsModel
 
-	settingsWindow <- builderGetObject builder castToWindow "settings_window"
+	settingsDialog <- builderGetObject builder castToDialog "main_settings_dialog"
 	imageLayout <- builderGetObject builder castToDrawingArea "image_layout"
 	
 	aspectRatioCombo <- builderGetObject builder castToComboBox "aspect_ratio_combo"
@@ -61,7 +59,7 @@ showSettingsWindow builder latestConfig = do
 
 	pickTextStyleBtn <- builderGetObject builder castToButton "picktextstylebtn"
 	pickTextStyleBtn `on` buttonActivated $ do
-		showTextStyleListDialog builder displayItemsModel textStylesModel settingsWindow
+		showTextStyleListDialog builder displayItemsModel textStylesModel settingsDialog
 		-- in case the user changed the text style
 		-- for the model, redraw.
 		widgetQueueDraw textStylePreview
@@ -103,12 +101,12 @@ showSettingsWindow builder latestConfig = do
 
 	positionDeleteButton <- builderGetObject builder castToButton "positionDeleteButton"
 	positionDeleteButton `on` buttonActivated $ do
-		confirm <- dialogYesNo settingsWindow "Are you sure to remove the display item?"
+		confirm <- dialogYesNo settingsDialog "Are you sure to remove the display item?"
 		when confirm $ do
 			itemToRemove <- liftM fromJust $ listModelGetCurrentItem displayItemsModel 
 			newCurItem <- liftM (find (/= itemToRemove)) $ readListModel displayItemsModel
 			case newCurItem of
-				Nothing -> displayError settingsWindow "Can't delete the last display item"
+				Nothing -> displayError settingsDialog "Can't delete the last display item"
 				Just newItem -> do
 					listModelSetCurrentItem displayItemsModel newItem
 					newPos <- liftM position $ readModel newItem
@@ -119,7 +117,7 @@ showSettingsWindow builder latestConfig = do
 
 	contentsAdvancedEdit <- builderGetObject builder castToButton "contentsAdvancedEdit"
 	contentsAdvancedEdit `on` buttonActivated $
-		getCurItem >>= showCustomContentsDialog settingsWindow builder customContentsDialogInfo
+		getCurItem >>= showCustomContentsDialog settingsDialog builder customContentsDialogInfo
 	
 	let showHideAdvancedEdit = do
 		idx <- comboBoxGetActive contentsCombo
@@ -153,7 +151,7 @@ showSettingsWindow builder latestConfig = do
 		newComboConnectId <- contentsCombo `on` changed $ do
 			comboPos <- comboBoxGetActive contentsCombo
 			when (comboPos == length contentsComboData) $
-				getCurItem >>= showCustomContentsDialog settingsWindow builder customContentsDialogInfo
+				getCurItem >>= showCustomContentsDialog settingsDialog builder customContentsDialogInfo
 		modifyIORef contentsComboChangedConnectId $ const $ Just newComboConnectId
 
 
@@ -161,22 +159,23 @@ showSettingsWindow builder latestConfig = do
 
 	liftM position (getCurItem >>= readModel) >>= comboBoxSelectPosition displayItemPositionCombo
 	displayItemPositionCombo `on` changed $
-		changeDisplayItemPosition settingsWindow displayItemPositionCombo displayItemsModel
+		changeDisplayItemPosition settingsDialog displayItemPositionCombo displayItemsModel
 
 	settingsOkBtn <- builderGetObject builder castToButton "settingsOk"
 	settingsOkBtn `on` buttonActivated $ do
 		updatedConf <- liftIO $ updateConfFromModel latestConfig displayItemsModel textStylesModel
 		saveSettings updatedConf
+		widgetHide settingsDialog
 
-	windowSetDefaultSize settingsWindow 600 500
+	windowSetDefaultSize settingsDialog 600 500
+	return settingsDialog
 	--prepareTextStylePreview builder latestConfig
-	widgetShowAll settingsWindow
 
 comboIndexes :: [(Int, ItemPosition)]
 comboIndexes = [(0, TopLeft), (1, TopCenter), (2, TopRight),
 		(3, BottomLeft), (4, BottomCenter), (5, BottomRight)]
 
-changeDisplayItemPosition :: Window -> ComboBox -> ListModel DisplayItem -> IO ()
+changeDisplayItemPosition :: Dialog -> ComboBox -> ListModel DisplayItem -> IO ()
 changeDisplayItemPosition parent displayItemPositionCombo displayItemsModel = do
 	selectedPosition <- comboBoxGetPosition displayItemPositionCombo
 	itemsModels <- readListModel displayItemsModel
@@ -201,7 +200,7 @@ comboBoxSelectPosition combo itemPosition = case find ((==itemPosition) . snd) c
 	Nothing -> error $ "No combobox entry for position " ++ show itemPosition
 	Just (idx, _) -> comboBoxSetActive combo idx
 
-offerCreate :: Window -> ItemPosition -> ListModel DisplayItem -> IO Bool
+offerCreate :: Dialog -> ItemPosition -> ListModel DisplayItem -> IO Bool
 offerCreate parent itemPosition displayItemsModel = do
 	isCreate <- dialogYesNo parent "There is no item to display at that position. Create one?"
 	if isCreate

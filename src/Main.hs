@@ -12,7 +12,7 @@ import Data.Maybe (fromJust)
 import Data.AppSettings
 
 import Settings
-import SettingsWindow
+import SettingsDialog
 import FrameRenderer (renderFrame, ImageInfo(..))
 
 minFontSize :: Int
@@ -63,8 +63,23 @@ main = do
 	pixbufSave pbuf "newout.jpg" "jpeg" [("quality", "95")]
 	Settings.saveSettings settings
 
-	showSettingsWindow builder latestConfig
+	showMainWindow builder latestConfig
+
 	mainGUI
+
+showMainWindow :: Builder -> IORef Conf -> IO ()
+showMainWindow builder latestConfig = do
+	mainWindow <- builderGetObject builder castToWindow "main_window"
+
+	settingsDialog <- prepareSettingsDialog builder latestConfig
+
+	toolbarPreferences <- builderGetObject builder castToToolButton "toolbarPreferences"
+	onToolButtonClicked toolbarPreferences $ do
+		dialogRun settingsDialog
+		widgetHide settingsDialog
+
+	windowSetDefaultSize mainWindow 600 500
+	widgetShowAll mainWindow
 
 getDisplayItemsStylesConf :: Conf -> [(DisplayItem, TextStyle)]
 getDisplayItemsStylesConf conf = zip displayItemsV textStylesV
