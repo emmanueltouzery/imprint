@@ -271,22 +271,28 @@ resetToDefaults :: ListModel DisplayItem -> ListModel TextStyle -> IO ()
 resetToDefaults displayItemsModel textStylesModel = do
 	-- Add text styles present in default, but not currently (by id)
 	-- and overwrite those with same id from default
-	textStylesModelsByKey <- readListModel textStylesModel >>= makeHashByKey styleId
-	mapM_ (addOrOverwrite textStylesModel textStylesModelsByKey styleId) defaultTextStyles
+	curTextStyleModelsByStyleId <- addOrOverwriteAll textStylesModel styleId defaultTextStyles
 	-- Add contents in new positions (topleft itd)
 	-- Overwrite contents in same positions
-	curDisplayItemsByKey <- readListModel displayItemsModel >>= makeHashByKey position
-	mapM_ (addOrOverwrite displayItemsModel curDisplayItemsByKey position) defaultDisplayItems
+	curDisplayItemModelsByPosition <- addOrOverwriteAll displayItemsModel position defaultDisplayItems
 	-- Remove extra contents
-	mapM_ (removeIfNotPresentByDefault displayItemsModel position defaultDisplayItems)
-		$ Map.toList curDisplayItemsByKey
+	mapM_ (removeIfNotPresentByDefault displayItemsModel position defaultDisplayItems) curDisplayItemModelsByPosition
 	-- Remove extra styles
-	mapM_ (removeIfNotPresentByDefault textStylesModel styleId defaultTextStyles)
-		$ Map.toList textStylesModelsByKey
+	mapM_ (removeIfNotPresentByDefault textStylesModel styleId defaultTextStyles) curTextStyleModelsByStyleId
 	where
 		(DefaultConfig defaultConf) = getAllSettings
 		defaultDisplayItems = getSetting' defaultConf displayItems
 		defaultTextStyles = getSetting' defaultConf textStyles
+
+addOrOverwriteAll :: (Eq a, Ord b) => ListModel a -> (a -> b) -> [a] -> IO ([(b, Model a)])
+addOrOverwriteAll listModel getKey defaultList = do
+	-- Add items present in default, but not currently (by key)
+	-- and overwrite those with same key from default
+	listModelByKey <- readListModel listModel >>= makeHashByKey getKey
+	mapM_ (addOrOverwrite listModel listModelByKey getKey) defaultList
+	-- set the current item to the first one from the default config.
+	listModelFind (== head defaultList) listModel >>= listModelSetCurrentItem listModel . fromJust
+	return $ Map.toList listModelByKey
 
 -- TODO must be able to make this look nicer...?
 makeHashByKey :: Ord b => (a -> b) -> [Model a] -> IO (Map.Map b (Model a))

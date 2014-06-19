@@ -16,6 +16,7 @@ module GtkViewModel (
 	listModelRemoveItem,
 	listModelSetCurrentItem,
 	listModelGetCurrentItem,
+	listModelFind,
 	Bindable,
 	bindModel,
 	addModelObserver,
@@ -105,6 +106,14 @@ listModelAddItem listModel itemModel = do
 	-- not what the user expects...
 	modifyIORef (items listModel) (\l -> l ++ [itemModel])
 	readIORef (addedCallbacks listModel) >>= mapM (flip ($) itemModel) >> return ()
+
+listModelFind :: (a -> Bool) -> ListModel a -> IO (Maybe (Model a))
+listModelFind cb listModel = do
+	list <- readIORef (items listModel)
+	curList <- mapM readModel list
+	return $ do
+		idx <- findIndex cb curList
+		return $ list !! idx
 
 listModelSetCurrentItem :: ListModel a -> Model a -> IO ()
 listModelSetCurrentItem listModel item = do
