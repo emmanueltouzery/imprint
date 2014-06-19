@@ -167,6 +167,10 @@ prepareSettingsDialog builder latestConfig = do
 		saveSettings updatedConf
 		widgetHide settingsDialog
 
+	settingsCancelBtn <- builderGetObject builder castToButton "settingsCancel"
+	settingsCancelBtn `on` buttonActivated $ do
+		widgetHide settingsDialog
+
 	windowSetDefaultSize settingsDialog 600 500
 	return settingsDialog
 	--prepareTextStylePreview builder latestConfig
