@@ -71,6 +71,8 @@ showMainWindow :: Builder -> IORef Conf -> IO ()
 showMainWindow builder latestConfig = do
 	mainWindow <- builderGetObject builder castToWindow "main_window"
 
+	mainWindow `on` objectDestroy $ mainQuit
+
 	settingsDialog <- prepareSettingsDialog builder latestConfig
 	set settingsDialog [windowTransientFor := mainWindow]
 
