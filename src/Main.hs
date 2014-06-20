@@ -6,10 +6,12 @@ import Graphics.Rendering.Cairo hiding (width, height, x)
 import Graphics.UI.Gtk hiding (styleSet)
 import Graphics.HsExif (parseFileExif)
 import Data.IORef
-import Control.Monad (liftM)
+import Control.Monad (liftM, when)
 import Data.List
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust, isJust)
 import Data.AppSettings
+import Control.Concurrent (forkOS)
+import Text.Printf (printf)
 
 import Settings
 import SettingsDialog
@@ -81,8 +83,51 @@ showMainWindow builder latestConfig = do
 		dialogRun settingsDialog
 		widgetHide settingsDialog
 
+	imprintDropDestination <- builderGetObject builder castToLabel "imprint_drop_destination"
+	dragDestSet imprintDropDestination [DestDefaultMotion, DestDefaultDrop] [ActionCopy]
+	dragDestAddURITargets imprintDropDestination
+
+	imprintDropDestination `on` dragDataReceived $ \dragCtxt _ _ time -> dragReceived dragCtxt time builder mainWindow
+
 	windowSetDefaultSize mainWindow 600 500
 	widgetShowAll mainWindow
+
+dragReceived :: DragContext -> TimeStamp -> Builder -> Window -> SelectionDataM ()
+dragReceived dragCtxt time builder mainWindow = do
+	mUris <- selectionDataGetURIs
+	liftIO $ print mUris
+	let success = True
+	let deleteOriginal = False -- True for a move.
+	liftIO $ do
+		dragFinish dragCtxt success deleteOriginal time
+		when (isJust mUris) $ do
+			userCancel <- newIORef False -- must move to MVar...
+			progressDialog <- builderGetObject builder castToDialog "progressDialog"
+			progressLabel <- builderGetObject builder castToLabel "progressLabel"
+			progressBar <- builderGetObject builder castToProgressBar "progressBar"
+			progressCancel <- builderGetObject builder castToButton "progressCancel"
+			progressCancel `on` buttonActivated $ modifyIORef userCancel $ const True
+			forkOS $ convertPictures (fromJust mUris) progressDialog progressLabel progressBar userCancel
+			set progressDialog [windowTransientFor := mainWindow]
+			dialogRun progressDialog >> return ()
+
+-- Careful this is in another thread...
+convertPictures :: [String] -> Dialog -> Label -> ProgressBar -> IORef Bool -> IO ()
+convertPictures files dialog label progressbar userCancel = do
+	print "convert pictures!"
+	mapM_ (uncurry $ convertPicture label progressbar (length files) userCancel) $ zip files [1..]
+	postGUIAsync $ widgetHide dialog
+	return ()
+
+-- Careful this is in another thread...
+convertPicture :: Label -> ProgressBar -> Int -> IORef Bool -> String -> Int -> IO ()
+convertPicture label progressBar filesCount userCancel filename fileIdx = do
+	print filename
+	print fileIdx
+	postGUIAsync $ do
+		labelSetText label $ printf "Processing image %d/%d" fileIdx filesCount
+		progressBarSetFraction progressBar $ (fromIntegral fileIdx) / (fromIntegral filesCount)
+	return ()
 
 getDisplayItemsStylesConf :: Conf -> [(DisplayItem, TextStyle)]
 getDisplayItemsStylesConf conf = zip displayItemsV textStylesV
