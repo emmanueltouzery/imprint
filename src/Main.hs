@@ -86,11 +86,14 @@ dragReceived dragCtxt time builder mainWindow latestConfig = do
 		dragFinish dragCtxt success deleteOriginal time
 		when (isJust mUris) $ do
 			settings <- readIORef latestConfig
-			userCancel <- newIORef False -- must move to MVar...
+			userCancel <- newIORef False -- should move to MVar?...
 			progressDialog <- builderGetObject builder castToDialog "progressDialog"
 			progressLabel <- builderGetObject builder castToLabel "progressLabel"
 			progressBar <- builderGetObject builder castToProgressBar "progressBar"
 			progressCancel <- builderGetObject builder castToButton "progressCancel"
+			progressClose <- builderGetObject builder castToButton "progressClose"
+			widgetShow progressCancel
+			widgetHide progressClose
 			errorsTreeview <- builderGetObject builder castToTreeView "errorsTreeview"
 			treeViewGetColumns errorsTreeview >>= mapM_ (treeViewRemoveColumn errorsTreeview)
 			errorsStore <- listStoreNew [ ErrorInfo "-" "Started the processing..."]
@@ -98,9 +101,11 @@ dragReceived dragCtxt time builder mainWindow latestConfig = do
 			treeViewSetFixedHeightMode errorsTreeview False
 			treeViewAddColumn errorsTreeview "Filename" errorsStore $ \(ErrorInfo p _) -> p
 			treeViewAddColumn errorsTreeview "Details" errorsStore $ \(ErrorInfo _ d) -> d
-			progressCancel `on` buttonActivated $ modifyIORef userCancel $ const True
+			progressClose `on` buttonActivated $ widgetHide progressDialog
+			progressCancel `on` buttonActivated $ atomicWriteIORef userCancel True
 			let filenames = map filenameFromUri $ fromJust mUris
-			forkOS $ convertPictures filenames settings progressLabel progressBar errorsStore userCancel
+			forkOS $ convertPictures filenames settings progressLabel
+				progressBar errorsStore userCancel progressCancel progressClose
 			set progressDialog [windowTransientFor := mainWindow]
 			windowSetDefaultSize progressDialog 600 380
 			dialogRun progressDialog
@@ -132,35 +137,41 @@ data ErrorInfo = ErrorInfo
 
 -- Careful this is in another thread...
 convertPictures :: [String] -> Conf -> Label -> 
-	ProgressBar -> ListStore ErrorInfo -> IORef Bool -> IO ()
-convertPictures files settings label progressbar errorsStore userCancel = do
-	print "convert pictures!"
+	ProgressBar -> ListStore ErrorInfo -> IORef Bool -> Button -> Button -> IO ()
+convertPictures files settings label progressbar errorsStore userCancel
+		progressCancel progressClose = do
 	mapM_ (uncurry $ convertPicture settings label
 		progressbar errorsStore (length files) userCancel) $ zip files [1..]
-	--postGUIAsync $ widgetHide dialog
-	return ()
+	labelSetText label "Finished."
+	listStoreAppend errorsStore $ ErrorInfo "-" "Finished the processing."
+	widgetHide progressCancel
+	widgetShow progressClose
 
 -- Careful this is in another thread...
 convertPicture :: Conf -> Label -> ProgressBar -> ListStore ErrorInfo ->
-	Int -> IORef Bool -> String -> Int -> IO ((String, Either SomeException ()))
-convertPicture settings label progressBar errorsStore filesCount userCancel filename fileIdx = do
-	postGUIAsync $ do
-		labelSetText label $ printf "Processing image %d/%d" fileIdx filesCount
-		progressBarSetFraction progressBar $ (fromIntegral fileIdx) / (fromIntegral filesCount)
+	Int -> IORef Bool -> String -> Int -> IO ()
+convertPicture settings label progressBar errorsStore filesCount
+		userCancel filename fileIdx = do
+	isUserCancel <- readIORef userCancel
+	if (not isUserCancel)
+		then do
+			postGUIAsync $ do
+				labelSetText label $ printf "Processing image %d/%d" fileIdx filesCount
+				progressBarSetFraction progressBar $ (fromIntegral fileIdx) / (fromIntegral filesCount)
 
-	result <- try $ convertPictureImpl settings filename $ getTargetFileName filename
-	when (isLeft result) $ postGUIAsync $ listStoreAppend errorsStore ErrorInfo
-		{
-			path = filename,
-			errorMessage = show $ (\(Left a) -> a) result
-		} >> return ()
+			(result :: Either SomeException ()) <- try $ convertPictureImpl settings filename $ getTargetFileName filename
+			when (isLeft result) $ postGUIAsync $ listStoreAppend errorsStore ErrorInfo
+				{
+					path = filename,
+					errorMessage = show $ (\(Left a) -> a) result
+				} >> return ()
+		else do
+			postGUIAsync $ listStoreAppend errorsStore ErrorInfo
+				{
+					path = filename,
+					errorMessage = "User cancelled"
+				} >> return ()
 
-	when (fileIdx == filesCount) $ postGUIAsync $ do
-		labelSetText label "Finished."
-		listStoreAppend errorsStore $ ErrorInfo "-" "Finished the processing."
-		return ()
-
-	return (filename, result)
 
 convertPictureImpl :: Conf -> String -> String -> IO ()
 convertPictureImpl settings filename targetFilename = do
