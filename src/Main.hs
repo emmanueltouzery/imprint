@@ -1,3 +1,4 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 module Main where
 
@@ -12,10 +13,16 @@ import Data.Maybe (fromJust, isJust)
 import Data.AppSettings
 import Control.Concurrent (forkOS)
 import Text.Printf (printf)
+import System.FilePath.Posix (splitFileName, pathSeparator)
+import Control.Exception (try, SomeException)
+import System.GIO.File.File (filePath, fileFromURI)
+import Data.ByteString.UTF8 (toString)
+import System.Directory (createDirectoryIfMissing)
 
 import Settings
 import SettingsDialog
 import FrameRenderer (renderFrame, ImageInfo(..))
+import Helpers (isLeft, displayError)
 
 minFontSize :: Int
 minFontSize = 5
@@ -40,29 +47,6 @@ main = do
 	builder <- builderNew
 	builderAddFromFile builder "imprint.ui"
 
-	let filename = "DSC04293.JPG"
-
-	exifInfo <- parseFileExif filename
-	let exifData = case exifInfo of
-		Left errorStr -> error errorStr
-		Right exif -> exif
-
-	img <- pixbufNewFromFile filename
-	width <- pixbufGetWidth img
-	height <- pixbufGetHeight img
-	sur <- createImageSurface FormatRGB24 width height
-	ctxt <- cairoCreateContext Nothing
-	text <- layoutEmpty ctxt
-
-	let imageInfo = ImageInfo filename exifData
-
-	renderWith sur $ do
-		setSourcePixbuf img 0 0
-		paint
-		renderFrame width height imageInfo text ctxt $ getDisplayItemsStylesConf settings
-
-	pbuf <- pixbufNewFromSurface sur 0 0 width height
-	pixbufSave pbuf "newout.jpg" "jpeg" [("quality", "95")]
 	Settings.saveSettings settings
 
 	showMainWindow builder latestConfig
@@ -87,47 +71,95 @@ showMainWindow builder latestConfig = do
 	dragDestSet imprintDropDestination [DestDefaultMotion, DestDefaultDrop] [ActionCopy]
 	dragDestAddURITargets imprintDropDestination
 
-	imprintDropDestination `on` dragDataReceived $ \dragCtxt _ _ time -> dragReceived dragCtxt time builder mainWindow
+	imprintDropDestination `on` dragDataReceived $ \dragCtxt _ _ time ->
+		dragReceived dragCtxt time builder mainWindow latestConfig
 
 	windowSetDefaultSize mainWindow 600 500
 	widgetShowAll mainWindow
 
-dragReceived :: DragContext -> TimeStamp -> Builder -> Window -> SelectionDataM ()
-dragReceived dragCtxt time builder mainWindow = do
+dragReceived :: DragContext -> TimeStamp -> Builder -> Window -> IORef Conf -> SelectionDataM ()
+dragReceived dragCtxt time builder mainWindow latestConfig = do
 	mUris <- selectionDataGetURIs
-	liftIO $ print mUris
 	let success = True
 	let deleteOriginal = False -- True for a move.
 	liftIO $ do
 		dragFinish dragCtxt success deleteOriginal time
 		when (isJust mUris) $ do
+			settings <- readIORef latestConfig
 			userCancel <- newIORef False -- must move to MVar...
 			progressDialog <- builderGetObject builder castToDialog "progressDialog"
 			progressLabel <- builderGetObject builder castToLabel "progressLabel"
 			progressBar <- builderGetObject builder castToProgressBar "progressBar"
 			progressCancel <- builderGetObject builder castToButton "progressCancel"
 			progressCancel `on` buttonActivated $ modifyIORef userCancel $ const True
-			forkOS $ convertPictures (fromJust mUris) progressDialog progressLabel progressBar userCancel
+			let filenames = map filenameFromUri $ fromJust mUris
+			forkOS $ convertPictures filenames settings 
+				progressDialog mainWindow progressLabel progressBar userCancel
 			set progressDialog [windowTransientFor := mainWindow]
 			dialogRun progressDialog >> return ()
 
+filenameFromUri :: String -> String
+filenameFromUri = toString . filePath . fileFromURI
+
 -- Careful this is in another thread...
-convertPictures :: [String] -> Dialog -> Label -> ProgressBar -> IORef Bool -> IO ()
-convertPictures files dialog label progressbar userCancel = do
+convertPictures :: [String] -> Conf -> Dialog -> Window -> Label -> ProgressBar -> IORef Bool -> IO ()
+convertPictures files settings dialog mainWindow label progressbar userCancel = do
 	print "convert pictures!"
-	mapM_ (uncurry $ convertPicture label progressbar (length files) userCancel) $ zip files [1..]
+	result <- mapM (uncurry $ convertPicture settings label progressbar (length files) userCancel) $ zip files [1..]
+	let errors = filter (isLeft . snd) result
+	when (not $ null errors) $ do
+		let listOfFiles = intercalate "\n" $ map fst errors
+		let firstErrorMsg = show $ (\(Left a) -> a) $ snd $ head errors
+		let msg = printf "%d errors during processing, the first error was:\n\n%s\n\nThe list of files that failed is:\n%s"
+				(length errors) firstErrorMsg listOfFiles
+		print msg
+		postGUIAsync $ displayError mainWindow msg
 	postGUIAsync $ widgetHide dialog
 	return ()
 
 -- Careful this is in another thread...
-convertPicture :: Label -> ProgressBar -> Int -> IORef Bool -> String -> Int -> IO ()
-convertPicture label progressBar filesCount userCancel filename fileIdx = do
-	print filename
-	print fileIdx
+convertPicture :: Conf -> Label -> ProgressBar -> Int -> IORef Bool -> String -> Int -> IO ((String, Either SomeException ()))
+convertPicture settings label progressBar filesCount userCancel filename fileIdx = do
 	postGUIAsync $ do
 		labelSetText label $ printf "Processing image %d/%d" fileIdx filesCount
 		progressBarSetFraction progressBar $ (fromIntegral fileIdx) / (fromIntegral filesCount)
-	return ()
+
+	result <- try $ convertPictureImpl settings filename $ getTargetFileName filename
+
+	return (filename, result)
+
+convertPictureImpl :: Conf -> String -> String -> IO ()
+convertPictureImpl settings filename targetFilename = do
+	exifInfo <- parseFileExif filename
+	let exifData = case exifInfo of
+		Left errorStr -> error errorStr
+		Right exif -> exif
+
+	img <- pixbufNewFromFile filename
+	width <- pixbufGetWidth img
+	height <- pixbufGetHeight img
+	sur <- createImageSurface FormatRGB24 width height
+	ctxt <- cairoCreateContext Nothing
+	text <- layoutEmpty ctxt
+
+	let imageInfo = ImageInfo filename exifData
+
+	renderWith sur $ do
+		setSourcePixbuf img 0 0
+		paint
+		renderFrame width height imageInfo text ctxt $ getDisplayItemsStylesConf settings
+
+	pbuf <- pixbufNewFromSurface sur 0 0 width height
+
+	let targetFolder = fst $ splitFileName targetFilename
+	createDirectoryIfMissing True targetFolder
+
+	pixbufSave pbuf targetFilename "jpeg" [("quality", "95")]
+
+getTargetFileName :: FilePath -> FilePath
+getTargetFileName inputFilename = intercalate [pathSeparator] [folder, "imprint", filename]
+	where
+		(folder, filename) = splitFileName inputFilename
 
 getDisplayItemsStylesConf :: Conf -> [(DisplayItem, TextStyle)]
 getDisplayItemsStylesConf conf = zip displayItemsV textStylesV
