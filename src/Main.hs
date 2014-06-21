@@ -22,7 +22,7 @@ import System.Directory (createDirectoryIfMissing)
 import Settings
 import SettingsDialog
 import FrameRenderer (renderFrame, ImageInfo(..))
-import Helpers (isLeft, displayError)
+import Helpers (isLeft)
 
 minFontSize :: Int
 minFontSize = 5
@@ -91,40 +91,74 @@ dragReceived dragCtxt time builder mainWindow latestConfig = do
 			progressLabel <- builderGetObject builder castToLabel "progressLabel"
 			progressBar <- builderGetObject builder castToProgressBar "progressBar"
 			progressCancel <- builderGetObject builder castToButton "progressCancel"
+			errorsTreeview <- builderGetObject builder castToTreeView "errorsTreeview"
+			treeViewGetColumns errorsTreeview >>= mapM_ (treeViewRemoveColumn errorsTreeview)
+			errorsStore <- listStoreNew [ ErrorInfo "-" "Started the processing..."]
+			treeViewSetModel errorsTreeview errorsStore
+			treeViewSetFixedHeightMode errorsTreeview False
+			treeViewAddColumn errorsTreeview "Filename" errorsStore $ \(ErrorInfo p _) -> p
+			treeViewAddColumn errorsTreeview "Details" errorsStore $ \(ErrorInfo _ d) -> d
 			progressCancel `on` buttonActivated $ modifyIORef userCancel $ const True
 			let filenames = map filenameFromUri $ fromJust mUris
-			forkOS $ convertPictures filenames settings 
-				progressDialog mainWindow progressLabel progressBar userCancel
+			forkOS $ convertPictures filenames settings progressLabel progressBar errorsStore userCancel
 			set progressDialog [windowTransientFor := mainWindow]
-			dialogRun progressDialog >> return ()
+			windowSetDefaultSize progressDialog 600 380
+			dialogRun progressDialog
+			widgetHide progressDialog
+
+treeViewAddColumn :: TreeView -> String -> ListStore a -> (a -> String) -> IO ()
+treeViewAddColumn treeView colName treeModel modelToStr = do
+	newCol <- treeViewColumnNew
+	set newCol [ treeViewColumnTitle := colName,
+			  treeViewColumnResizable := True ]
+	treeViewAppendColumn treeView newCol
+	newRenderer <- cellRendererTextNew
+	set newRenderer [ cellTextWrapMode := WrapPartialWords, cellTextWrapWidth := 250]
+	cellLayoutPackStart newCol newRenderer True
+	treeViewColumnSetSizing newCol TreeViewColumnFixed
+	treeViewColumnSetFixedWidth newCol 250
+	treeViewColumnSetExpand newCol True
+	cellLayoutSetAttributes newCol newRenderer treeModel
+		$ \modelV ->  [cellText := modelToStr modelV]
 
 filenameFromUri :: String -> String
 filenameFromUri = toString . filePath . fileFromURI
 
+data ErrorInfo = ErrorInfo
+	{
+		path :: String,
+		errorMessage :: String
+	} deriving (Show)
+
 -- Careful this is in another thread...
-convertPictures :: [String] -> Conf -> Dialog -> Window -> Label -> ProgressBar -> IORef Bool -> IO ()
-convertPictures files settings dialog mainWindow label progressbar userCancel = do
+convertPictures :: [String] -> Conf -> Label -> 
+	ProgressBar -> ListStore ErrorInfo -> IORef Bool -> IO ()
+convertPictures files settings label progressbar errorsStore userCancel = do
 	print "convert pictures!"
-	result <- mapM (uncurry $ convertPicture settings label progressbar (length files) userCancel) $ zip files [1..]
-	let errors = filter (isLeft . snd) result
-	when (not $ null errors) $ do
-		let listOfFiles = intercalate "\n" $ map fst errors
-		let firstErrorMsg = show $ (\(Left a) -> a) $ snd $ head errors
-		let msg = printf "%d errors during processing, the first error was:\n\n%s\n\nThe list of files that failed is:\n%s"
-				(length errors) firstErrorMsg listOfFiles
-		print msg
-		postGUIAsync $ displayError mainWindow msg
-	postGUIAsync $ widgetHide dialog
+	mapM_ (uncurry $ convertPicture settings label
+		progressbar errorsStore (length files) userCancel) $ zip files [1..]
+	--postGUIAsync $ widgetHide dialog
 	return ()
 
 -- Careful this is in another thread...
-convertPicture :: Conf -> Label -> ProgressBar -> Int -> IORef Bool -> String -> Int -> IO ((String, Either SomeException ()))
-convertPicture settings label progressBar filesCount userCancel filename fileIdx = do
+convertPicture :: Conf -> Label -> ProgressBar -> ListStore ErrorInfo ->
+	Int -> IORef Bool -> String -> Int -> IO ((String, Either SomeException ()))
+convertPicture settings label progressBar errorsStore filesCount userCancel filename fileIdx = do
 	postGUIAsync $ do
 		labelSetText label $ printf "Processing image %d/%d" fileIdx filesCount
 		progressBarSetFraction progressBar $ (fromIntegral fileIdx) / (fromIntegral filesCount)
 
 	result <- try $ convertPictureImpl settings filename $ getTargetFileName filename
+	when (isLeft result) $ postGUIAsync $ listStoreAppend errorsStore ErrorInfo
+		{
+			path = filename,
+			errorMessage = show $ (\(Left a) -> a) result
+		} >> return ()
+
+	when (fileIdx == filesCount) $ postGUIAsync $ do
+		labelSetText label "Finished."
+		listStoreAppend errorsStore $ ErrorInfo "-" "Finished the processing."
+		return ()
 
 	return (filename, result)
 
