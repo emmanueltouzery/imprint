@@ -36,7 +36,8 @@ executable imprint
                        split == 0.2.*,
                        gio == 0.12.*,
                        bytestring == 0.10.*,
-                       utf8-string == 0.3.*
+                       utf8-string == 0.3.*,
+                       process == 1.1.*
   hs-source-dirs: src
   default-language:    Haskell2010
   Ghc-Options:         -Wall -threaded

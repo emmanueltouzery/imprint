@@ -19,6 +19,7 @@ import System.GIO.File.File (filePath, fileFromURI)
 import Data.ByteString.UTF8 (toString)
 import System.Directory (createDirectoryIfMissing, doesDirectoryExist, getDirectoryContents)
 import Control.Applicative
+import System.Process (rawSystem)
 
 import Settings
 import SettingsDialog
@@ -181,7 +182,12 @@ convertPictures files targetFolder settings userCancel pictureConvertedCb doneCb
 
 -- TODO make it actually open the folder..
 openFolder :: FilePath -> IO ()
-openFolder folderPath = putStrLn $ "TODO opening folder " ++ folderPath
+openFolder folderPath = rawSystem command [folderPath] >> return ()
+	where
+		command = if pathSeparator == '/'
+			then "xdg-open" -- linux
+			else "start" -- windows
+	
 
 
 -- Careful this is in another thread...
