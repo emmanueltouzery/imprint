@@ -7,7 +7,7 @@ import Graphics.Rendering.Cairo hiding (width, height, x)
 import Graphics.UI.Gtk hiding (styleSet)
 import Graphics.HsExif (parseFileExif)
 import Data.IORef
-import Control.Monad (liftM, when)
+import Control.Monad (liftM, when, void)
 import Data.List
 import Data.Maybe (fromJust, isJust)
 import Data.AppSettings
@@ -133,10 +133,10 @@ dragReceived dragCtxt time builderHolder mainWindow latestConfig = do
 			let pictureConvertCb = \fileIdx successInfo -> do
 				postGUIAsync $ do
 					labelSetText progressLabel $ printf "Processing image %d/%d" fileIdx filesCount
-					progressBarSetFraction progressBar $ (fromIntegral fileIdx) / (fromIntegral filesCount)
+					progressBarSetFraction progressBar $ fromIntegral fileIdx / fromIntegral filesCount
 				case successInfo of
 					Right _ -> postGUIAsync $ widgetSetSensitive (boundButton progressOpenTargetFolder) True
-					Left errorInfo -> postGUIAsync $ listStoreAppend errorsStore errorInfo >> return ()
+					Left errorInfo -> postGUIAsync $ void (listStoreAppend errorsStore errorInfo)
 
 			forkOS $ convertPictures expandedFilenames targetFolder settings userCancel pictureConvertCb $
 				postGUIAsync $ do
@@ -195,7 +195,7 @@ convertPictures files targetFolder settings userCancel pictureConvertedCb doneCb
 
 -- TODO make it actually open the folder..
 openFolder :: FilePath -> IO ()
-openFolder folderPath = rawSystem command [folderPath] >> return ()
+openFolder folderPath = void (rawSystem command [folderPath])
 	where
 		command = if pathSeparator == '/'
 			then "xdg-open" -- linux
@@ -212,7 +212,7 @@ convertPicture settings targetFolder userCancel pictureConvertedCb filename file
 		else do
 			(result :: Either SomeException ()) <- try $
 				convertPictureImpl settings filename $ getTargetFileName filename targetFolder
-			if (isLeft result)
+			if isLeft result
 				then logError $ show $ (\(Left a) -> a) result
 				else pictureConvertedCb fileIdx $ Right ()
 
