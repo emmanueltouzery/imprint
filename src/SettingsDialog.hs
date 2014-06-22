@@ -187,6 +187,7 @@ changeDisplayItemPosition parent displayItemPositionCombo displayItemsModel = do
 		Nothing -> do
 			isCreate <- offerCreate parent selectedPosition displayItemsModel
 			when (not isCreate) $ do
+				-- user refused to create, reset the combo to the previous position.
 				displayItem <- listModelGetCurrentItem displayItemsModel >>= readModel . fromJust
 				comboBoxSelectPosition displayItemPositionCombo $ position displayItem
 		Just (itemModel, _) -> listModelSetCurrentItem displayItemsModel itemModel
