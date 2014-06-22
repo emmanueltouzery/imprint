@@ -3,7 +3,6 @@ module Helpers where
 import Graphics.UI.Gtk
 import Data.Word
 import Data.IORef
-import Data.Maybe (isJust)
 import qualified Data.Map as Map
 import Data.Map (Map)
 
@@ -92,7 +91,6 @@ buttonBindCallback btnBinder cb = do
 	whenIsJust cbId $ signalDisconnect
 	newCbId <- (boundButton btnBinder) `on` buttonActivated $ cb
 	modifyIORef (currentCbId btnBinder) $ const (Just newCbId)
-	readIORef (currentCbId btnBinder) >>= print . isJust
 
 whenM :: Monad m => m Bool -> m () -> m ()
 whenM test action = test >>= \t -> if t then action else return ()
