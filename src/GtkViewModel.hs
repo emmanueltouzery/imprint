@@ -27,7 +27,7 @@ module GtkViewModel (
 import Data.IORef
 import Control.Lens
 import Graphics.UI.Gtk
-import Control.Monad (liftM, when)
+import Control.Monad (liftM, when, void)
 import Data.List
 import Data.Maybe (fromMaybe)
 
@@ -98,14 +98,14 @@ listModelRemoveItem listModel itemModel = do
 		-- removing the current item!
 		modifyIORef (currentItem listModel) $ const Nothing
 	modifyIORef (items listModel) $ filter ((/=contents itemModel) . contents)
-	readIORef (removedCallbacks listModel) >>= mapM (flip ($) itemModel) >> return ()
+	readIORef (removedCallbacks listModel) >>= mapM_ ($ itemModel)
 
 listModelAddItem :: ListModel a -> Model a -> IO ()
 listModelAddItem listModel itemModel = do
 	-- would be faster to add at the beginning, but it's
 	-- not what the user expects...
 	modifyIORef (items listModel) (\l -> l ++ [itemModel])
-	readIORef (addedCallbacks listModel) >>= mapM (flip ($) itemModel) >> return ()
+	readIORef (addedCallbacks listModel) >>= mapM_ ($ itemModel)
 
 listModelFind :: (a -> Bool) -> ListModel a -> IO (Maybe (Model a))
 listModelFind cb listModel = do
@@ -121,7 +121,7 @@ listModelSetCurrentItem listModel item = do
 	case find (==item) list of
 		x@(Just _) -> do
 			modifyIORef (currentItem listModel) $ const x
-			readIORef (currentItemCallbacks listModel) >>= mapM (flip ($) item) >> return ()
+			readIORef (currentItemCallbacks listModel) >>= mapM_ ($ item)
 		Nothing -> error "listModelSetCurrentItem: item not in list!"
 
 listModelGetCurrentItem :: ListModel a -> IO (Maybe (Model a))
@@ -138,32 +138,28 @@ class Bindable b c where
 
 -- would be nice to have an helper that takes the builder
 -- the string and the caster too, though it may be complicated with caster crap.
-bindModel :: Bindable b c => Model a -> (Lens' a c) -> b -> IO ()
+bindModel :: Bindable b c => Model a -> Lens' a c -> b -> IO ()
 bindModel model memberLens bindable = do
-	let reader = \x -> x ^. memberLens
+	let reader = (^. memberLens)
 	readIORef (contents model) >>= \v -> initBind bindable $ reader v
-	modifyIORef (changeCallbacks model) $ (setWidgetValue bindable . reader:)
+	modifyIORef (changeCallbacks model) (setWidgetValue bindable . reader:)
 	readIORef (contents model) >>= setWidgetValue bindable . reader
 	registerWidgetListener bindable $ \newV ->
-		modifyModel model (memberLens .~ newV) >> return ()
+		void (modifyModel model (memberLens .~ newV))
 
 instance Bindable FontButton (Maybe String) where
-	setWidgetValue w Nothing = fontButtonSetFontName w "" >> return ()
-	setWidgetValue w (Just v) = fontButtonSetFontName w v >> return ()
-	registerWidgetListener fontButton cb = do
-		onFontSet fontButton $ do
+	setWidgetValue w Nothing = void (fontButtonSetFontName w "")
+	setWidgetValue w (Just v) = void (fontButtonSetFontName w v)
+	registerWidgetListener fontButton cb = void (onFontSet fontButton $ do
 			selectedFontName <- fontButtonGetFontName fontButton
-			cb $ Just selectedFontName
-		>> return ()
+			cb $ Just selectedFontName)
 
 instance Bindable ColorButton ColorRgba where
 	setWidgetValue = buttonSetColor
-	registerWidgetListener w cb = do
-		onColorSet w $ do
+	registerWidgetListener w cb = void (onColorSet w $ do
 			gtkColor <- colorButtonGetColor w
 			alpha <- colorButtonGetAlpha w
-			cb $ readGtkColorAlpha gtkColor alpha
-		>> return ()
+			cb $ readGtkColorAlpha gtkColor alpha)
 
 data RangeBindInfo a = RangeBindInfo
 	{
@@ -183,11 +179,9 @@ instance (RangeClass a) => Bindable (RangeBindInfo a) Double where
 	setWidgetValue w v = do
 		adj <- rangeGetAdjustment $ range w
 		adjustmentSetValue adj $ v*100
-	registerWidgetListener w cb = do
+	registerWidgetListener w cb = void (do
 		adj <- rangeGetAdjustment $ range w
-		onValueChanged adj $ do
-			liftM (/100) (adjustmentGetValue adj) >>= cb
-		>> return ()
+		onValueChanged adj $ liftM (/100) (adjustmentGetValue adj) >>= cb)
 
 -- for the combo bind info, you can give a defaultIndex, which will
 -- be used in case the model is set to a value which is not contained
@@ -218,7 +212,7 @@ data ComboBindInfo a b = ComboBindInfo
 instance (ComboBoxClass a, Eq b) => Bindable (ComboBindInfo a b) b where
 	initBind (ComboBindInfo combo values extraValues _ connectIdRef) _ = do
 		connectId <- readIORef connectIdRef
-		whenIsJust connectId $ signalDisconnect
+		whenIsJust connectId signalDisconnect
 		comboBoxSetModelText combo
 		mapM_ (comboBoxAppendText combo . fst) values
 		mapM_ (comboBoxAppendText combo) extraValues
@@ -234,5 +228,5 @@ instance (ComboBoxClass a, Eq b) => Bindable (ComboBindInfo a b) b where
 		modifyIORef connectIdRef $ const (Just cId)
 
 instance Bindable Entry String where
-	setWidgetValue w v = entrySetText w v
-	registerWidgetListener w cb = (w `on` editableChanged $ entryGetText w >>= cb) >> return ()
+	setWidgetValue = entrySetText
+	registerWidgetListener w cb = void (w `on` editableChanged $ entryGetText w >>= cb)
