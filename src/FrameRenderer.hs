@@ -34,7 +34,7 @@ parseFormatParsec = do
 	return r
 
 parseFormatElement :: GenParser Char st FormatElement
-parseFormatElement = (try parseDate) <|> (try parseEscapedPercent) <|> (try parseFormatItem) <|> parseString
+parseFormatElement = try parseDate <|> try parseEscapedPercent <|> try parseFormatItem <|> parseString
 
 parseDate :: GenParser Char st FormatElement
 parseDate = do
