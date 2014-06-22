@@ -6,7 +6,6 @@ import Graphics.Rendering.Cairo hiding (width, height, x)
 import Graphics.Rendering.Cairo.SVG
 import Graphics.UI.Gtk hiding (styleSet)
 import Data.Maybe (fromJust)
-import Data.IORef
 import Control.Monad (when, liftM)
 import Data.List
 import Control.Lens hiding (set)
@@ -188,7 +187,7 @@ prepareButton stockId = do
 	buttonSetRelief btn ReliefNone
 	return btn
 
-data TextStyleDialogInfo = TextStyleDialogInfo (Model TextStyle) Button Dialog (IORef (Maybe (ConnectId Button)))
+data TextStyleDialogInfo = TextStyleDialogInfo (Model TextStyle) ButtonBinder Dialog
 
 prepareTextStyleDialog :: Builder -> TextStyle -> IO TextStyleDialogInfo
 prepareTextStyleDialog builder textStyle = do
@@ -230,22 +229,17 @@ prepareTextStyleDialog builder textStyle = do
 	textStyleBtnCancel <- builderGetObject builder castToButton "textStyleBtnCancel"
 	textStyleBtnCancel `on` buttonActivated $ widgetHide dialog
 
-	textStyleBtnOk <- builderGetObject builder castToButton "textStyleBtnOk"
+	builderHolder <- getBuilderHolder builder
+	textStyleBtnOk <- builderHolderGetButtonBinder builderHolder "textStyleBtnOk"
 
-	okSignalRef <- newIORef Nothing
-
-	return $ TextStyleDialogInfo textStyleModel textStyleBtnOk dialog okSignalRef
+	return $ TextStyleDialogInfo textStyleModel textStyleBtnOk dialog
 
 showTextStyleDialog :: Dialog -> TextStyleDialogInfo -> Model TextStyle -> IO ()
-showTextStyleDialog parent (TextStyleDialogInfo curTextStyle textStyleBtnOk dialog okSigRef) textStyleModel = do
+showTextStyleDialog parent (TextStyleDialogInfo curTextStyle textStyleBtnOk dialog) textStyleModel = do
 	readModel textStyleModel >>= modifyModel curTextStyle . const
-	-- TODO move to the ButtonBinder mechanism
-	okSig <- readIORef okSigRef
-	whenIsJust okSig $ signalDisconnect
-	newOkSig <- textStyleBtnOk `on` buttonActivated $ do
+	buttonBindCallback textStyleBtnOk $ do
 		readModel curTextStyle >>= modifyModel textStyleModel . const
 		widgetHide dialog
-	writeIORef okSigRef (Just newOkSig)
 	
 	windowSetDefaultSize dialog 450 300
 	set dialog [windowTransientFor := parent]

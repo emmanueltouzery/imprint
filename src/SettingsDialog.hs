@@ -129,7 +129,6 @@ prepareSettingsDialog builder latestConfig = do
 	contentsComboChangedConnectId <- newIORef Nothing
 
 	addListModelCurrentItemObserver displayItemsModel $ \currentDisplayItemModel -> do
-		-- TODO move to the ButtonBinder mechanism
 		comboConnId <- readIORef contentsComboChangedConnectId
 		whenIsJust comboConnId $ signalDisconnect
 		bindModel currentDisplayItemModel marginXFromWidthL horMarginRangeBindInfo
