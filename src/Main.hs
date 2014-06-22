@@ -69,6 +69,17 @@ showMainWindow builder latestConfig = do
 		dialogRun settingsDialog
 		widgetHide settingsDialog
 
+	toolbarAbout <- builderGetObject builder castToToolButton "toolbarAbout"
+	onToolButtonClicked toolbarAbout $ do
+		aboutDlg <- aboutDialogNew
+		set aboutDlg [aboutDialogProgramName := "Imprint",
+				aboutDialogLicense := Just "BSD license",
+				aboutDialogWebsite := "https://github.com/emmanueltouzery/imprint/",
+				aboutDialogComments:= "Add information about pictures as text painted on the pictures themselves.",
+				windowTransientFor := mainWindow]
+		dialogRun aboutDlg
+		widgetDestroy aboutDlg
+
 	imprintDropDestination <- builderGetObject builder castToLabel "imprint_drop_destination"
 	dragDestSet imprintDropDestination [DestDefaultMotion, DestDefaultDrop] [ActionCopy]
 	dragDestAddURITargets imprintDropDestination
@@ -188,7 +199,6 @@ openFolder folderPath = rawSystem command [folderPath] >> return ()
 			then "xdg-open" -- linux
 			else "start" -- windows
 	
-
 
 -- Careful this is in another thread...
 convertPicture :: Conf -> String -> IORef Bool -> (Int -> Either ErrorInfo () -> IO ()) -> String -> Int -> IO ()
