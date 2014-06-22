@@ -13,16 +13,17 @@ import Data.Maybe (fromJust, isJust)
 import Data.AppSettings
 import Control.Concurrent (forkOS)
 import Text.Printf (printf)
-import System.FilePath.Posix (splitFileName, pathSeparator)
+import System.FilePath.Posix (splitFileName, pathSeparator, splitPath)
 import Control.Exception (try, SomeException)
 import System.GIO.File.File (filePath, fileFromURI)
 import Data.ByteString.UTF8 (toString)
 import System.Directory (createDirectoryIfMissing)
+import qualified Data.Function as F (on)
 
 import Settings
 import SettingsDialog
 import FrameRenderer (renderFrame, ImageInfo(..))
-import Helpers (isLeft)
+import Helpers
 
 minFontSize :: Int
 minFontSize = 5
@@ -71,20 +72,25 @@ showMainWindow builder latestConfig = do
 	dragDestSet imprintDropDestination [DestDefaultMotion, DestDefaultDrop] [ActionCopy]
 	dragDestAddURITargets imprintDropDestination
 
+	builderHolder <- getBuilderHolder builder
+
 	imprintDropDestination `on` dragDataReceived $ \dragCtxt _ _ time ->
-		dragReceived dragCtxt time builder mainWindow latestConfig
+		dragReceived dragCtxt time builderHolder mainWindow latestConfig
 
 	windowSetDefaultSize mainWindow 600 500
 	widgetShowAll mainWindow
 
-dragReceived :: DragContext -> TimeStamp -> Builder -> Window -> IORef Conf -> SelectionDataM ()
-dragReceived dragCtxt time builder mainWindow latestConfig = do
+dragReceived :: DragContext -> TimeStamp -> BuilderHolder -> Window -> IORef Conf -> SelectionDataM ()
+dragReceived dragCtxt time builderHolder mainWindow latestConfig = do
+	let builder = boundBuilder builderHolder
 	mUris <- selectionDataGetURIs
 	let success = True
 	let deleteOriginal = False -- True for a move.
 	liftIO $ do
 		dragFinish dragCtxt success deleteOriginal time
 		when (isJust mUris) $ do
+			-- TODO these URIs can contain folders!! Must expand them
+			-- to files by recursively browsing...
 			settings <- readIORef latestConfig
 			userCancel <- newIORef False -- should move to MVar?...
 			progressDialog <- builderGetObject builder castToDialog "progressDialog"
@@ -92,6 +98,8 @@ dragReceived dragCtxt time builder mainWindow latestConfig = do
 			progressBar <- builderGetObject builder castToProgressBar "progressBar"
 			progressCancel <- builderGetObject builder castToButton "progressCancel"
 			progressClose <- builderGetObject builder castToButton "progressClose"
+			progressOpenTargetFolder <- builderHolderGetButtonBinder
+				builderHolder "progressOpenTargetFolder"
 			widgetShow progressCancel
 			widgetHide progressClose
 			errorsTreeview <- builderGetObject builder castToTreeView "errorsTreeview"
@@ -105,7 +113,7 @@ dragReceived dragCtxt time builder mainWindow latestConfig = do
 			progressCancel `on` buttonActivated $ atomicWriteIORef userCancel True
 			let filenames = map filenameFromUri $ fromJust mUris
 			forkOS $ convertPictures filenames settings progressLabel
-				progressBar errorsStore userCancel progressCancel progressClose
+				progressBar errorsStore userCancel progressCancel progressClose progressOpenTargetFolder
 			set progressDialog [windowTransientFor := mainWindow]
 			windowSetDefaultSize progressDialog 600 380
 			dialogRun progressDialog
@@ -137,20 +145,46 @@ data ErrorInfo = ErrorInfo
 
 -- Careful this is in another thread...
 convertPictures :: [String] -> Conf -> Label -> 
-	ProgressBar -> ListStore ErrorInfo -> IORef Bool -> Button -> Button -> IO ()
+	ProgressBar -> ListStore ErrorInfo -> IORef Bool -> Button -> Button -> ButtonBinder -> IO ()
+ 
 convertPictures files settings label progressbar errorsStore userCancel
-		progressCancel progressClose = do
+		progressCancel progressClose progressOpenTargetFolder = do
+	let targetFolder = getTargetFolder files
+	-- TODO make the button insensitive until the first image is saved..
+	-- TODO make it actually open the folder..
+	buttonBindCallback progressOpenTargetFolder $ do
+		openFolder targetFolder
 	mapM_ (uncurry $ convertPicture settings label
-		progressbar errorsStore (length files) userCancel) $ zip files [1..]
+		progressbar errorsStore (length files) targetFolder userCancel) $ zip files [1..]
 	labelSetText label "Finished."
 	listStoreAppend errorsStore $ ErrorInfo "-" "Finished the processing."
 	widgetHide progressCancel
 	widgetShow progressClose
 
+openFolder :: FilePath -> IO ()
+openFolder folderPath = putStrLn $ "TODO opening folder " ++ folderPath
+
+-- the user may have dropped a whole file hierarchy like
+-- Pictures, Pictures/2014, Pictures/2013 and so on.
+-- I don't want to fill in tons of imprint folders all
+-- over the place like Pictures/imprint, Pictures/2014/imprint,
+-- Pictures/2013/imprint and so on.
+-- In this case I want only Pictures/imprint.
+--
+-- So I must find the "root" folder of the selected files
+-- and that's the parent folder for my output imprint folder.
+getTargetFolder :: [String] -> String
+getTargetFolder files = rootFolder ++ "/imprint"
+	where
+		pathDepths = map (length . splitPath) files
+		filesWithpathDepth = zip files pathDepths
+		fileInHigherFolder = fst $ head $ sortBy (compare `F.on` snd) filesWithpathDepth
+		rootFolder = fst $ splitFileName fileInHigherFolder
+
 -- Careful this is in another thread...
 convertPicture :: Conf -> Label -> ProgressBar -> ListStore ErrorInfo ->
-	Int -> IORef Bool -> String -> Int -> IO ()
-convertPicture settings label progressBar errorsStore filesCount
+	Int -> String -> IORef Bool -> String -> Int -> IO ()
+convertPicture settings label progressBar errorsStore filesCount targetFolder
 		userCancel filename fileIdx = do
 	isUserCancel <- readIORef userCancel
 	if (not isUserCancel)
@@ -159,7 +193,8 @@ convertPicture settings label progressBar errorsStore filesCount
 				labelSetText label $ printf "Processing image %d/%d" fileIdx filesCount
 				progressBarSetFraction progressBar $ (fromIntegral fileIdx) / (fromIntegral filesCount)
 
-			(result :: Either SomeException ()) <- try $ convertPictureImpl settings filename $ getTargetFileName filename
+			(result :: Either SomeException ()) <- try $ convertPictureImpl settings filename $
+				getTargetFileName filename targetFolder
 			when (isLeft result) $ postGUIAsync $ listStoreAppend errorsStore ErrorInfo
 				{
 					path = filename,
@@ -201,10 +236,10 @@ convertPictureImpl settings filename targetFilename = do
 
 	pixbufSave pbuf targetFilename "jpeg" [("quality", "95")]
 
-getTargetFileName :: FilePath -> FilePath
-getTargetFileName inputFilename = intercalate [pathSeparator] [folder, "imprint", filename]
+getTargetFileName :: FilePath -> FilePath -> FilePath
+getTargetFileName inputFilename targetFolder = intercalate [pathSeparator] [targetFolder, filename]
 	where
-		(folder, filename) = splitFileName inputFilename
+		filename = snd $ splitFileName inputFilename
 
 getDisplayItemsStylesConf :: Conf -> [(DisplayItem, TextStyle)]
 getDisplayItemsStylesConf conf = zip displayItemsV textStylesV

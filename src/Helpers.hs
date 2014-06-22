@@ -2,6 +2,11 @@ module Helpers where
 
 import Graphics.UI.Gtk
 import Data.Word
+import Data.IORef
+import Data.Maybe (isJust, fromJust)
+import Control.Monad (when)
+import qualified Data.Map as Map
+import Data.Map (Map)
 
 rectWidth :: Rectangle -> Int
 rectWidth (Rectangle _ _ w _) = w
@@ -39,6 +44,60 @@ dialogYesNo parent msg = do
 	widgetDestroy dialog
 	return $ resp == ResponseYes
 
+data BuilderHolder = BuilderHolder
+	{
+		boundBuilder :: Builder,
+		buttonBinders :: IORef (Map String ButtonBinder)
+	}
+
+getBuilderHolder :: Builder -> IO BuilderHolder
+getBuilderHolder builder = do
+	binders <- newIORef $ Map.fromList []
+	return $ BuilderHolder
+		{
+			boundBuilder = builder,
+			buttonBinders = binders
+		}
+
+-- The problem this solves is that I have dialogs
+-- that I show and hide and show again, because
+-- I use the gtkbuilder system.
+-- And when I show it again, I must disconnect
+-- the previous button click handlers before I
+-- connect the new one, otherwise the old handler
+-- also gets invoked. To disconnect I need the
+-- connection ID, that I must store...
+-- TODO move to this pattern in more places
+builderHolderGetButtonBinder :: BuilderHolder -> String -> IO (ButtonBinder)
+builderHolderGetButtonBinder builderHolder btnName = do
+	bindersV <- readIORef $ buttonBinders builderHolder
+	case Map.lookup btnName bindersV of
+		Just btnBinder -> return btnBinder
+		Nothing -> do
+			btn <- builderGetObject (boundBuilder builderHolder) castToButton btnName
+			cb <- newIORef Nothing
+			let binder = ButtonBinder btn cb
+			modifyIORef (buttonBinders builderHolder)
+				$ const $ Map.insert btnName binder bindersV
+			return binder
+
+data ButtonBinder = ButtonBinder
+	{
+		boundButton :: Button,
+		currentCbId :: IORef (Maybe (ConnectId Button))
+	}
+
+buttonBindCallback :: ButtonBinder -> IO () -> IO ()
+buttonBindCallback btnBinder cb = do
+	cbId <- readIORef $ currentCbId btnBinder
+	readIORef (currentCbId btnBinder) >>= print . isJust
+	-- TODO i have this pattern isJust/fromJust all over
+	-- the place, must be a nicer way.
+	when (isJust cbId) $ signalDisconnect $ fromJust cbId
+	newCbId <- (boundButton btnBinder) `on` buttonActivated $ cb
+	modifyIORef (currentCbId btnBinder) $ const (Just newCbId)
+	readIORef (currentCbId btnBinder) >>= print . isJust
+
 whenM :: Monad m => m Bool -> m () -> m ()
 whenM test action = test >>= \t -> if t then action else return ()
 
@@ -46,3 +105,5 @@ whenM test action = test >>= \t -> if t then action else return ()
 isLeft :: Either a b -> Bool
 isLeft (Left _) = True
 isLeft _        = False
+
+-- TODO make also some whenIsJust to replace my pattern when (isJust) $ ... fromJust
