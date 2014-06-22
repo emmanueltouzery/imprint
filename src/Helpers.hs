@@ -89,7 +89,6 @@ data ButtonBinder = ButtonBinder
 buttonBindCallback :: ButtonBinder -> IO () -> IO ()
 buttonBindCallback btnBinder cb = do
 	cbId <- readIORef $ currentCbId btnBinder
-	readIORef (currentCbId btnBinder) >>= print . isJust
 	whenIsJust cbId $ signalDisconnect
 	newCbId <- (boundButton btnBinder) `on` buttonActivated $ cb
 	modifyIORef (currentCbId btnBinder) $ const (Just newCbId)

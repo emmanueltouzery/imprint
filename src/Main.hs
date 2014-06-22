@@ -100,6 +100,7 @@ dragReceived dragCtxt time builderHolder mainWindow latestConfig = do
 			progressClose <- builderGetObject builder castToButton "progressClose"
 			progressOpenTargetFolder <- builderHolderGetButtonBinder
 				builderHolder "progressOpenTargetFolder"
+			widgetSetSensitive (boundButton progressOpenTargetFolder) False
 			widgetShow progressCancel
 			widgetHide progressClose
 			errorsTreeview <- builderGetObject builder castToTreeView "errorsTreeview"
@@ -143,18 +144,19 @@ data ErrorInfo = ErrorInfo
 		errorMessage :: String
 	} deriving (Show)
 
+-- TODO too many parameters?
 -- Careful this is in another thread...
 convertPictures :: [String] -> Conf -> Label -> 
 	ProgressBar -> ListStore ErrorInfo -> IORef Bool -> Button -> Button -> ButtonBinder -> IO ()
 convertPictures files settings label progressbar errorsStore userCancel
 		progressCancel progressClose progressOpenTargetFolder = do
 	let targetFolder = getTargetFolder files
-	-- TODO make the button insensitive until the first image is saved..
 	-- TODO make it actually open the folder..
 	buttonBindCallback progressOpenTargetFolder $ do
 		openFolder targetFolder
 	mapM_ (uncurry $ convertPicture settings label
-		progressbar errorsStore (length files) targetFolder userCancel) $ zip files [1..]
+		progressbar (boundButton progressOpenTargetFolder) 
+		errorsStore (length files) targetFolder userCancel) $ zip files [1..]
 	postGUIAsync $ do
 		labelSetText label "Finished."
 		listStoreAppend errorsStore $ ErrorInfo "-" "Finished the processing."
@@ -181,10 +183,11 @@ getTargetFolder files = rootFolder ++ "/imprint"
 		fileInHigherFolder = fst $ head $ sortBy (compare `F.on` snd) filesWithpathDepth
 		rootFolder = fst $ splitFileName fileInHigherFolder
 
+-- TODO too many parameters?
 -- Careful this is in another thread...
-convertPicture :: Conf -> Label -> ProgressBar -> ListStore ErrorInfo ->
+convertPicture :: Conf -> Label -> ProgressBar -> Button -> ListStore ErrorInfo ->
 	Int -> String -> IORef Bool -> String -> Int -> IO ()
-convertPicture settings label progressBar errorsStore filesCount targetFolder
+convertPicture settings label progressBar progressOpenTargetFolderBtn errorsStore filesCount targetFolder
 		userCancel filename fileIdx = do
 	isUserCancel <- readIORef userCancel
 	let logError = \fPath msg -> postGUIAsync $ listStoreAppend errorsStore ErrorInfo
@@ -199,9 +202,11 @@ convertPicture settings label progressBar errorsStore filesCount targetFolder
 				labelSetText label $ printf "Processing image %d/%d" fileIdx filesCount
 				progressBarSetFraction progressBar $ (fromIntegral fileIdx) / (fromIntegral filesCount)
 
-			(result :: Either SomeException ()) <- try $ convertPictureImpl settings filename $
-				getTargetFileName filename targetFolder
-			when (isLeft result) $ logError filename $ show $ (\(Left a) -> a) result
+			(result :: Either SomeException ()) <- try $
+				convertPictureImpl settings filename $ getTargetFileName filename targetFolder
+			if (isLeft result)
+				then logError filename $ show $ (\(Left a) -> a) result
+				else widgetSetSensitive progressOpenTargetFolderBtn True
 
 
 convertPictureImpl :: Conf -> String -> String -> IO ()
