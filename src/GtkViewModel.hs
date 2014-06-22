@@ -29,7 +29,7 @@ import Control.Lens
 import Graphics.UI.Gtk
 import Control.Monad (liftM, when)
 import Data.List
-import Data.Maybe (fromMaybe, isJust, fromJust)
+import Data.Maybe (fromMaybe)
 
 import Helpers
 import Settings (ColorRgba)
@@ -218,7 +218,7 @@ data ComboBindInfo a b = ComboBindInfo
 instance (ComboBoxClass a, Eq b) => Bindable (ComboBindInfo a b) b where
 	initBind (ComboBindInfo combo values extraValues _ connectIdRef) _ = do
 		connectId <- readIORef connectIdRef
-		when (isJust connectId) $ signalDisconnect (fromJust connectId)
+		whenIsJust connectId $ signalDisconnect
 		comboBoxSetModelText combo
 		mapM_ (comboBoxAppendText combo . fst) values
 		mapM_ (comboBoxAppendText combo) extraValues

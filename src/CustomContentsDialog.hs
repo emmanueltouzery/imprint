@@ -3,7 +3,7 @@ module CustomContentsDialog where
 
 import Data.Maybe (isJust, fromJust)
 import Data.List
-import Control.Monad (liftM, when)
+import Control.Monad (liftM)
 import Graphics.UI.Gtk
 import Control.Lens hiding (set)
 import Data.IORef
@@ -114,7 +114,7 @@ showCustomContentsDialog parent builder (CustomContentsDialogInfo okSigRef) disp
 		return True
 
 	okSig <- readIORef okSigRef
-	when (isJust okSig) $ signalDisconnect $ fromJust okSig
+	whenIsJust okSig $ signalDisconnect
 	newOkSig <- okBtn `on` buttonActivated $ do
 		newText <- entryGetText customContentsEntry
 		modifyModel displayItemModel $ itemContentsL .~ newText

@@ -5,7 +5,7 @@ module TextStylesSettings where
 import Graphics.Rendering.Cairo hiding (width, height, x)
 import Graphics.Rendering.Cairo.SVG
 import Graphics.UI.Gtk hiding (styleSet)
-import Data.Maybe (fromJust, isJust)
+import Data.Maybe (fromJust)
 import Data.IORef
 import Control.Monad (when, liftM)
 import Data.List
@@ -240,7 +240,7 @@ showTextStyleDialog :: Dialog -> TextStyleDialogInfo -> Model TextStyle -> IO ()
 showTextStyleDialog parent (TextStyleDialogInfo curTextStyle textStyleBtnOk dialog okSigRef) textStyleModel = do
 	readModel textStyleModel >>= modifyModel curTextStyle . const
 	okSig <- readIORef okSigRef
-	when (isJust okSig) $ signalDisconnect $ fromJust okSig
+	whenIsJust okSig $ signalDisconnect
 	newOkSig <- textStyleBtnOk `on` buttonActivated $ do
 		readModel curTextStyle >>= modifyModel textStyleModel . const
 		widgetHide dialog

@@ -3,8 +3,7 @@ module Helpers where
 import Graphics.UI.Gtk
 import Data.Word
 import Data.IORef
-import Data.Maybe (isJust, fromJust)
-import Control.Monad (when)
+import Data.Maybe (isJust)
 import qualified Data.Map as Map
 import Data.Map (Map)
 
@@ -91,9 +90,7 @@ buttonBindCallback :: ButtonBinder -> IO () -> IO ()
 buttonBindCallback btnBinder cb = do
 	cbId <- readIORef $ currentCbId btnBinder
 	readIORef (currentCbId btnBinder) >>= print . isJust
-	-- TODO i have this pattern isJust/fromJust all over
-	-- the place, must be a nicer way.
-	when (isJust cbId) $ signalDisconnect $ fromJust cbId
+	whenIsJust cbId $ signalDisconnect
 	newCbId <- (boundButton btnBinder) `on` buttonActivated $ cb
 	modifyIORef (currentCbId btnBinder) $ const (Just newCbId)
 	readIORef (currentCbId btnBinder) >>= print . isJust
@@ -106,4 +103,7 @@ isLeft :: Either a b -> Bool
 isLeft (Left _) = True
 isLeft _        = False
 
--- TODO make also some whenIsJust to replace my pattern when (isJust) $ ... fromJust
+whenIsJust :: (Monad m) => Maybe a -> (a -> m ()) -> m ()
+whenIsJust mA s = case mA of
+	Nothing -> return ()
+	Just x -> s x

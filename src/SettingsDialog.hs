@@ -130,8 +130,7 @@ prepareSettingsDialog builder latestConfig = do
 
 	addListModelCurrentItemObserver displayItemsModel $ \currentDisplayItemModel -> do
 		comboConnId <- readIORef contentsComboChangedConnectId
-		when (isJust comboConnId) $ signalDisconnect $ fromJust comboConnId
-		putStrLn "current display item changed!"
+		whenIsJust comboConnId $ signalDisconnect
 		bindModel currentDisplayItemModel marginXFromWidthL horMarginRangeBindInfo
 		bindModel currentDisplayItemModel textSizeFromWidthL scaleRangeBindInfo
 		bindModel currentDisplayItemModel marginYFromWidthL verMarginRangeBindInfo
