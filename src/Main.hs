@@ -17,8 +17,9 @@ import System.FilePath.Posix (splitFileName, pathSeparator, splitPath)
 import Control.Exception (try, SomeException)
 import System.GIO.File.File (filePath, fileFromURI)
 import Data.ByteString.UTF8 (toString)
-import System.Directory (createDirectoryIfMissing)
+import System.Directory (createDirectoryIfMissing, doesDirectoryExist, getDirectoryContents)
 import qualified Data.Function as F (on)
+import Control.Applicative
 
 import Settings
 import SettingsDialog
@@ -89,8 +90,6 @@ dragReceived dragCtxt time builderHolder mainWindow latestConfig = do
 	liftIO $ do
 		dragFinish dragCtxt success deleteOriginal time
 		when (isJust mUris) $ do
-			-- TODO these URIs can contain folders!! Must expand them
-			-- to files by recursively browsing...
 			settings <- readIORef latestConfig
 			userCancel <- newIORef False -- should move to MVar?...
 			progressDialog <- builderGetObject builder castToDialog "progressDialog"
@@ -113,8 +112,9 @@ dragReceived dragCtxt time builderHolder mainWindow latestConfig = do
 			progressClose `on` buttonActivated $ widgetHide progressDialog
 			progressCancel `on` buttonActivated $ atomicWriteIORef userCancel True
 			let filenames = map filenameFromUri $ fromJust mUris
-			let filesCount = length filenames
-			let targetFolder = getTargetFolder filenames
+			expandedFilenames <- expandFilenames filenames
+			let filesCount = length expandedFilenames
+			let targetFolder = getTargetFolder expandedFilenames
 			buttonBindCallback progressOpenTargetFolder $ openFolder targetFolder
 
 			let pictureConvertCb = \fileIdx successInfo -> do
@@ -125,7 +125,7 @@ dragReceived dragCtxt time builderHolder mainWindow latestConfig = do
 					Right _ -> postGUIAsync $ widgetSetSensitive (boundButton progressOpenTargetFolder) True
 					Left errorInfo -> postGUIAsync $ listStoreAppend errorsStore errorInfo >> return ()
 
-			forkOS $ convertPictures filenames targetFolder settings userCancel pictureConvertCb $
+			forkOS $ convertPictures expandedFilenames targetFolder settings userCancel pictureConvertCb $
 				postGUIAsync $ do
 					labelSetText progressLabel "Finished."
 					listStoreAppend errorsStore $ ErrorInfo "-" "Finished the processing."
@@ -150,6 +150,20 @@ treeViewAddColumn treeView colName treeModel modelToStr = do
 	treeViewColumnSetExpand newCol True
 	cellLayoutSetAttributes newCol newRenderer treeModel
 		$ \modelV ->  [cellText := modelToStr modelV]
+
+-- take a list of paths which can be either files or folders,
+-- keep the files, but replace the folders by all the files
+-- under them (recursively)
+expandFilenames :: [String] -> IO [String]
+expandFilenames [] = return []
+expandFilenames (x:xs) = do
+	isDir <- doesDirectoryExist x 
+	if not isDir
+		then liftM (x:) $ expandFilenames xs
+		else do
+			filesInDir <- liftM (filter (`notElem` [".", ".."])) $ getDirectoryContents x
+			let filesInDirFullPath = map (\f -> x ++ [pathSeparator] ++ f) filesInDir
+			(++) <$> expandFilenames filesInDirFullPath <*> expandFilenames xs
 
 filenameFromUri :: String -> String
 filenameFromUri = toString . filePath . fileFromURI
