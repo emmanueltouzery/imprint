@@ -146,7 +146,6 @@ data ErrorInfo = ErrorInfo
 -- Careful this is in another thread...
 convertPictures :: [String] -> Conf -> Label -> 
 	ProgressBar -> ListStore ErrorInfo -> IORef Bool -> Button -> Button -> ButtonBinder -> IO ()
- 
 convertPictures files settings label progressbar errorsStore userCancel
 		progressCancel progressClose progressOpenTargetFolder = do
 	let targetFolder = getTargetFolder files
@@ -156,10 +155,11 @@ convertPictures files settings label progressbar errorsStore userCancel
 		openFolder targetFolder
 	mapM_ (uncurry $ convertPicture settings label
 		progressbar errorsStore (length files) targetFolder userCancel) $ zip files [1..]
-	labelSetText label "Finished."
-	listStoreAppend errorsStore $ ErrorInfo "-" "Finished the processing."
-	widgetHide progressCancel
-	widgetShow progressClose
+	postGUIAsync $ do
+		labelSetText label "Finished."
+		listStoreAppend errorsStore $ ErrorInfo "-" "Finished the processing."
+		widgetHide progressCancel
+		widgetShow progressClose
 
 openFolder :: FilePath -> IO ()
 openFolder folderPath = putStrLn $ "TODO opening folder " ++ folderPath
@@ -187,25 +187,21 @@ convertPicture :: Conf -> Label -> ProgressBar -> ListStore ErrorInfo ->
 convertPicture settings label progressBar errorsStore filesCount targetFolder
 		userCancel filename fileIdx = do
 	isUserCancel <- readIORef userCancel
-	if (not isUserCancel)
-		then do
+	let logError = \fPath msg -> postGUIAsync $ listStoreAppend errorsStore ErrorInfo
+		{
+			path = fPath,
+			errorMessage = msg
+		} >> return ()
+	if isUserCancel
+		then logError filename "User cancelled"
+		else do
 			postGUIAsync $ do
 				labelSetText label $ printf "Processing image %d/%d" fileIdx filesCount
 				progressBarSetFraction progressBar $ (fromIntegral fileIdx) / (fromIntegral filesCount)
 
 			(result :: Either SomeException ()) <- try $ convertPictureImpl settings filename $
 				getTargetFileName filename targetFolder
-			when (isLeft result) $ postGUIAsync $ listStoreAppend errorsStore ErrorInfo
-				{
-					path = filename,
-					errorMessage = show $ (\(Left a) -> a) result
-				} >> return ()
-		else do
-			postGUIAsync $ listStoreAppend errorsStore ErrorInfo
-				{
-					path = filename,
-					errorMessage = "User cancelled"
-				} >> return ()
+			when (isLeft result) $ logError filename $ show $ (\(Left a) -> a) result
 
 
 convertPictureImpl :: Conf -> String -> String -> IO ()
