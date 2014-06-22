@@ -113,11 +113,11 @@ prepareSettingsDialog builder latestConfig = do
 					comboBoxSelectPosition displayItemPositionCombo newPos
 					listModelRemoveItem displayItemsModel itemToRemove
 
-	customContentsDialogInfo <- prepareCustomContentsDialog
+	builderHolder <- getBuilderHolder builder
 
 	contentsAdvancedEdit <- builderGetObject builder castToButton "contentsAdvancedEdit"
 	contentsAdvancedEdit `on` buttonActivated $
-		getCurItem >>= showCustomContentsDialog settingsDialog builder customContentsDialogInfo
+		getCurItem >>= showCustomContentsDialog settingsDialog builderHolder
 	
 	let showHideAdvancedEdit = do
 		idx <- comboBoxGetActive contentsCombo
@@ -129,6 +129,7 @@ prepareSettingsDialog builder latestConfig = do
 	contentsComboChangedConnectId <- newIORef Nothing
 
 	addListModelCurrentItemObserver displayItemsModel $ \currentDisplayItemModel -> do
+		-- TODO move to the ButtonBinder mechanism
 		comboConnId <- readIORef contentsComboChangedConnectId
 		whenIsJust comboConnId $ signalDisconnect
 		bindModel currentDisplayItemModel marginXFromWidthL horMarginRangeBindInfo
@@ -150,7 +151,7 @@ prepareSettingsDialog builder latestConfig = do
 		newComboConnectId <- contentsCombo `on` changed $ do
 			comboPos <- comboBoxGetActive contentsCombo
 			when (comboPos == length contentsComboData) $
-				getCurItem >>= showCustomContentsDialog settingsDialog builder customContentsDialogInfo
+				getCurItem >>= showCustomContentsDialog settingsDialog builderHolder
 		modifyIORef contentsComboChangedConnectId $ const $ Just newComboConnectId
 
 

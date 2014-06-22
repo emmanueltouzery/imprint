@@ -6,7 +6,6 @@ import Data.List
 import Control.Monad (liftM)
 import Graphics.UI.Gtk
 import Control.Lens hiding (set)
-import Data.IORef
 
 import SettingsWindowData
 import GtkViewModel
@@ -49,24 +48,16 @@ data CompletionRecord = CompletionRecord
 isDateRecord :: CompletionRecord -> Bool
 isDateRecord (CompletionRecord t _ _) = t == DateCompletion
 
-data CustomContentsDialogInfo = CustomContentsDialogInfo (IORef (Maybe (ConnectId Button)))
-
--- TODO I use in several places that pattern
--- of disconnecting the signal for the ok button
--- of a dialog. Make some nice wrapper.
-prepareCustomContentsDialog :: IO CustomContentsDialogInfo
-prepareCustomContentsDialog = do
-	okSignalRef <- newIORef Nothing
-	return $ CustomContentsDialogInfo okSignalRef
-
-showCustomContentsDialog :: WindowClass a => a -> Builder -> CustomContentsDialogInfo -> Model DisplayItem -> IO ()
-showCustomContentsDialog parent builder (CustomContentsDialogInfo okSigRef) displayItemModel = do
+showCustomContentsDialog :: WindowClass a => a -> BuilderHolder -> Model DisplayItem -> IO ()
+showCustomContentsDialog parent builderHolder displayItemModel = do
+	let builder = boundBuilder builderHolder
 	dialog <- builderGetObject builder castToDialog "customContentsDialog"
 	set dialog [windowTransientFor := parent]
 	customContentsEntry <- builderGetObject builder castToEntry "customContentsEntry"
 	curContents <- liftM itemContents $ readModel displayItemModel
 
-	okBtn <- builderGetObject builder castToButton "customContentsOK"
+	okBtnBinder <- builderHolderGetButtonBinder builderHolder "customContentsOK"
+	let okBtn = boundButton okBtnBinder
 	cancelBtn <- builderGetObject builder castToButton "customContentsCancel"
 
 	defaultDisplayItem <- readModel displayItemModel
@@ -113,13 +104,10 @@ showCustomContentsDialog parent builder (CustomContentsDialogInfo okSigRef) disp
 		editableSetPosition customContentsEntry newPos
 		return True
 
-	okSig <- readIORef okSigRef
-	whenIsJust okSig $ signalDisconnect
-	newOkSig <- okBtn `on` buttonActivated $ do
+	buttonBindCallback okBtnBinder $ do
 		newText <- entryGetText customContentsEntry
 		modifyModel displayItemModel $ itemContentsL .~ newText
 		widgetHide dialog
-	writeIORef okSigRef (Just newOkSig)
 	cancelBtn `on` buttonActivated $ widgetHide dialog
 
 	dialogRun dialog

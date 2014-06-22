@@ -239,6 +239,7 @@ prepareTextStyleDialog builder textStyle = do
 showTextStyleDialog :: Dialog -> TextStyleDialogInfo -> Model TextStyle -> IO ()
 showTextStyleDialog parent (TextStyleDialogInfo curTextStyle textStyleBtnOk dialog okSigRef) textStyleModel = do
 	readModel textStyleModel >>= modifyModel curTextStyle . const
+	-- TODO move to the ButtonBinder mechanism
 	okSig <- readIORef okSigRef
 	whenIsJust okSig $ signalDisconnect
 	newOkSig <- textStyleBtnOk `on` buttonActivated $ do
