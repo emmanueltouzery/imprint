@@ -5,6 +5,9 @@ import Data.Word
 import Data.IORef
 import qualified Data.Map as Map
 import Data.Map (Map)
+import System.FilePath.Posix (splitFileName, splitPath, takeDirectory)
+import qualified Data.Function as F (on)
+import Data.List
 
 rectWidth :: Rectangle -> Int
 rectWidth (Rectangle _ _ w _) = w
@@ -104,3 +107,34 @@ whenIsJust :: (Monad m) => Maybe a -> (a -> m ()) -> m ()
 whenIsJust mA s = case mA of
 	Nothing -> return ()
 	Just x -> s x
+
+-- the user may have dropped a whole file hierarchy like
+-- Pictures, Pictures/2014, Pictures/2013 and so on.
+-- I don't want to fill in tons of imprint folders all
+-- over the place like Pictures/imprint, Pictures/2014/imprint,
+-- Pictures/2013/imprint and so on.
+-- In this case I want only Pictures/imprint.
+--
+-- So I must find the "root" folder of the selected files
+-- and that's the parent folder for my output imprint folder.
+--
+-- But now if the user picks in the folder Pictures two folders
+-- 2013 and 2014 for export, then I should export in the parent
+-- Pictures folder. That's the case when two or more folders
+-- are the root folder. Then I take the parent.
+getTargetFolder :: [String] -> String
+getTargetFolder files = rootFolder ++ "/imprint"
+	where
+		folders = nub $ map (fst . splitFileName) files
+		pathDepths = map (length . splitPath) folders
+		foldersWithpathDepth = zip folders pathDepths
+		foldersWithDepthByDepth = sortBy (compare `F.on` snd) foldersWithpathDepth
+		smallestDepth = snd $ head $ foldersWithDepthByDepth
+		isSeveralRootFolders = not $ null $ takeWhile ((==smallestDepth) . snd) $
+			tail foldersWithDepthByDepth
+		-- takeDirectory to remove the trailing /
+		folderSmallestDepth = takeDirectory $ fst $ head foldersWithDepthByDepth
+		rootFolder = if isSeveralRootFolders
+			-- now takeDirectory goes to the parent folder.
+			then takeDirectory folderSmallestDepth
+			else folderSmallestDepth

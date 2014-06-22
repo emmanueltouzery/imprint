@@ -3,6 +3,7 @@ import Test.HUnit
 
 import FrameRenderer
 import Graphics.HsExif
+import Helpers (getTargetFolder)
 
 main :: IO ()
 main = hspec $ do
@@ -17,6 +18,7 @@ runFormatParsingTests = do
 	testComposite
 	testShouldFail
 	testShouldFail2
+	testGetTargetFolder
 
 testFile :: Spec
 testFile = it "parses a file criteria" $ do
@@ -45,6 +47,19 @@ testShouldFail = it "fails parsing a bad string" $ do
 testShouldFail2 :: Spec
 testShouldFail2 = it "fails parsing a bad string" $ do
 	assertBool "fails" $ isLeft $ parseFormat "%file %ss"
+
+testGetTargetFolder :: Spec
+testGetTargetFolder = it "gets the target folder correctly" $ do
+	assertEqual' "/home/emmanuel/Pictures/2010/imprint" $
+		getTargetFolder ["/home/emmanuel/Pictures/2010/f1.jpg",
+			"/home/emmanuel/Pictures/2010/f2.jpg",
+			"/home/emmanuel/Pictures/2010/subfolder/f2.jpg"]
+	assertEqual' "/home/emmanuel/Pictures/2011/subfolder/imprint" $
+		getTargetFolder ["/home/emmanuel/Pictures/2011/subfolder/f1.jpg",
+			"/home/emmanuel/Pictures/2011/subfolder/f2.jpg"]
+	assertEqual' "/home/emmanuel/Pictures/2012/imprint" $
+		getTargetFolder ["/home/emmanuel/Pictures/2012/subfolder/f1.jpg",
+			"/home/emmanuel/Pictures/2012/subfolder2/f2.jpg"]
 
 isLeft :: Either a b -> Bool
 isLeft (Left _) = True

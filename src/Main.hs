@@ -13,12 +13,11 @@ import Data.Maybe (fromJust, isJust)
 import Data.AppSettings
 import Control.Concurrent (forkOS)
 import Text.Printf (printf)
-import System.FilePath.Posix (splitFileName, pathSeparator, splitPath)
+import System.FilePath.Posix (splitFileName, pathSeparator)
 import Control.Exception (try, SomeException)
 import System.GIO.File.File (filePath, fileFromURI)
 import Data.ByteString.UTF8 (toString)
 import System.Directory (createDirectoryIfMissing, doesDirectoryExist, getDirectoryContents)
-import qualified Data.Function as F (on)
 import Control.Applicative
 
 import Settings
@@ -184,22 +183,6 @@ convertPictures files targetFolder settings userCancel pictureConvertedCb doneCb
 openFolder :: FilePath -> IO ()
 openFolder folderPath = putStrLn $ "TODO opening folder " ++ folderPath
 
--- the user may have dropped a whole file hierarchy like
--- Pictures, Pictures/2014, Pictures/2013 and so on.
--- I don't want to fill in tons of imprint folders all
--- over the place like Pictures/imprint, Pictures/2014/imprint,
--- Pictures/2013/imprint and so on.
--- In this case I want only Pictures/imprint.
---
--- So I must find the "root" folder of the selected files
--- and that's the parent folder for my output imprint folder.
-getTargetFolder :: [String] -> String
-getTargetFolder files = rootFolder ++ "/imprint"
-	where
-		pathDepths = map (length . splitPath) files
-		filesWithpathDepth = zip files pathDepths
-		fileInHigherFolder = fst $ head $ sortBy (compare `F.on` snd) filesWithpathDepth
-		rootFolder = fst $ splitFileName fileInHigherFolder
 
 -- Careful this is in another thread...
 convertPicture :: Conf -> String -> IORef Bool -> (Int -> Either ErrorInfo () -> IO ()) -> String -> Int -> IO ()
