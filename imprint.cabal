@@ -13,6 +13,7 @@ maintainer:          etouzery@gmail.com
 -- copyright:           
 category:            Graphics
 build-type:          Simple
+data-files:          imprint.ui active_item.svg
 -- extra-source-files:  
 cabal-version:       >=1.10
 

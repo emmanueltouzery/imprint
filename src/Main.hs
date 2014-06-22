@@ -21,6 +21,8 @@ import System.Directory (createDirectoryIfMissing, doesDirectoryExist, getDirect
 import Control.Applicative
 import System.Process (rawSystem)
 
+import Paths_imprint (getDataFileName)
+
 import Settings
 import SettingsDialog
 import FrameRenderer (renderFrame, ImageInfo(..))
@@ -47,7 +49,7 @@ main = do
 	latestConfig <- newIORef settings
 
 	builder <- builderNew
-	builderAddFromFile builder "imprint.ui"
+	getDataFileName "imprint.ui" >>= builderAddFromFile builder
 
 	Settings.saveSettings settings
 

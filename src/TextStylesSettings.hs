@@ -10,6 +10,8 @@ import Control.Monad (when, liftM)
 import Data.List
 import Control.Lens hiding (set)
 
+import Paths_imprint (getDataFileName)
+
 import Settings hiding (saveSettings)
 import GtkViewModel
 import FrameRenderer
@@ -46,7 +48,7 @@ getCurrentDisplayItem displayItemsModel = listModelGetCurrentItem displayItemsMo
 -- I know I'll find it.
 showTextStyleListDialog :: Builder -> ListModel DisplayItem -> ListModel TextStyle -> Dialog -> IO ()
 showTextStyleListDialog builder displayItemsModel textStylesModel parent = do
-	activeItemSvg <- svgNewFromFile "active_item.svg"
+	activeItemSvg <- getDataFileName "active_item.svg" >>= svgNewFromFile
 	dialog <- builderGetObject builder castToDialog "dialog1"
 	stylesVbox <- builderGetObject builder castToBox "stylesVbox"
 	containerForeach stylesVbox (\w -> containerRemove stylesVbox w)
