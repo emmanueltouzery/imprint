@@ -5,8 +5,8 @@ import Graphics.UI.Gtk hiding (styleSet)
 import Graphics.Rendering.Cairo hiding (width, height, x)
 import Data.IORef
 import Data.AppSettings (getSetting', setSetting, Conf, DefaultConfig(..))
-import Control.Monad (liftM, when)
-import Data.Maybe (fromJust, isJust)
+import Control.Monad (liftM, when, void)
+import Data.Maybe (fromJust, isNothing)
 import Data.List
 import qualified Data.Map as Map
 
@@ -52,7 +52,7 @@ prepareSettingsDialog builder latestConfig = do
 
 	textLayout <- layoutEmpty ctxt
 	textLayout `layoutSetText` "2014-04-01"
-	imageLayout `on` draw $ do
+	imageLayout `on` draw $
 		drawImageLayout imageLayout aspectRatioCombo displayItemsModel textStylesModel textLayout ctxt
 
 	textStylePreview <- builderGetObject builder castToDrawingArea "textstylepreview"
@@ -130,19 +130,18 @@ prepareSettingsDialog builder latestConfig = do
 
 	addListModelCurrentItemObserver displayItemsModel $ \currentDisplayItemModel -> do
 		comboConnId <- readIORef contentsComboChangedConnectId
-		whenIsJust comboConnId $ signalDisconnect
+		whenIsJust comboConnId signalDisconnect
 		bindModel currentDisplayItemModel marginXFromWidthL horMarginRangeBindInfo
 		bindModel currentDisplayItemModel textSizeFromWidthL scaleRangeBindInfo
 		bindModel currentDisplayItemModel marginYFromWidthL verMarginRangeBindInfo
 		bindModel currentDisplayItemModel itemContentsL comboContentsBindInfo
-		widgetQueueDraw imageLayout
-		widgetQueueDraw textStylePreview
-		showHideAdvancedEdit
-		-- this is so that we redraw when the current item is modified.
-		addModelObserver currentDisplayItemModel $ \_ -> do
+		let redraw = do
 			widgetQueueDraw imageLayout
 			widgetQueueDraw textStylePreview
 			showHideAdvancedEdit
+		redraw
+		-- this is so that we redraw when the current item is modified.
+		addModelObserver currentDisplayItemModel $ const redraw
 
 		-- this at the end so that it does not trigger
 		-- when we open the dialog, but only in case
@@ -167,8 +166,7 @@ prepareSettingsDialog builder latestConfig = do
 		widgetHide settingsDialog
 
 	settingsCancelBtn <- builderGetObject builder castToButton "settingsCancel"
-	settingsCancelBtn `on` buttonActivated $ do
-		widgetHide settingsDialog
+	settingsCancelBtn `on` buttonActivated $ widgetHide settingsDialog
 
 	windowSetDefaultSize settingsDialog 600 500
 	return settingsDialog
@@ -255,7 +253,7 @@ drawImageLayout drawingArea aspectRatioCombo displayItemsModel textStylesModel t
 		then (w, w*heightMultiplier)
 		else (h/heightMultiplier, h)
 
-	let top = ((h-effectiveH)/2)
+	let top = (h-effectiveH)/2
 
 	rectangle 0 top effectiveW effectiveH
 	setSourceRGB 0 0 0
@@ -287,7 +285,7 @@ resetToDefaults displayItemsModel textStylesModel = do
 		defaultDisplayItems = getSetting' defaultConf displayItems
 		defaultTextStyles = getSetting' defaultConf textStyles
 
-addOrOverwriteAll :: (Eq a, Ord b) => ListModel a -> (a -> b) -> [a] -> IO ([(b, Model a)])
+addOrOverwriteAll :: (Eq a, Ord b) => ListModel a -> (a -> b) -> [a] -> IO [(b, Model a)]
 addOrOverwriteAll listModel getKey defaultList = do
 	-- Add items present in default, but not currently (by key)
 	-- and overwrite those with same key from default
@@ -299,15 +297,15 @@ addOrOverwriteAll listModel getKey defaultList = do
 
 -- TODO must be able to make this look nicer...?
 makeHashByKey :: Ord b => (a -> b) -> [Model a] -> IO (Map.Map b (Model a))
-makeHashByKey getKey = liftM Map.fromList . mapM (\x -> (liftM getKey $ readModel x) >>= return . flip (,) x)
+makeHashByKey getKey = liftM Map.fromList . mapM (\x -> liftM (flip (,) x . getKey) (readModel x))
 
 addOrOverwrite :: Ord b => ListModel a -> Map.Map b (Model a) -> (a -> b) -> a -> IO ()
-addOrOverwrite listModel modelItemsByKey getKey newItem = do
+addOrOverwrite listModel modelItemsByKey getKey newItem =
 	case Map.lookup (getKey newItem) modelItemsByKey of
 		Nothing -> makeModel newItem >>= listModelAddItem listModel
-		Just curModel -> (modifyModel curModel $ const newItem) >> return ()
+		Just curModel -> void (modifyModel curModel $ const newItem)
 
 removeIfNotPresentByDefault :: (Eq a, Eq b) => ListModel a -> (a -> b) -> [a] -> (b, Model a) -> IO ()
-removeIfNotPresentByDefault listModel getKey defaultList (key, value) = do
-	when (not . isJust $ find ((==key) . getKey) defaultList) $
+removeIfNotPresentByDefault listModel getKey defaultList (key, value) =
+	when (isNothing $ find ((==key) . getKey) defaultList) $
 		listModelRemoveItem listModel value

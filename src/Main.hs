@@ -127,7 +127,7 @@ processDrop builderHolder latestConfig mainWindow uris = do
 	treeViewAddColumn errorsTreeview "Details" errorsStore $ \(ErrorInfo _ d) -> d
 	progressClose `on` buttonActivated $ widgetHide progressDialog
 	progressCancel `on` buttonActivated $ atomicWriteIORef userCancel True
-	let filenames = map filenameFromUri $ uris
+	let filenames = map filenameFromUri uris
 	expandedFilenames <- expandFilenames filenames
 	let filesCount = length expandedFilenames
 	let targetFolder = getTargetFolder expandedFilenames
