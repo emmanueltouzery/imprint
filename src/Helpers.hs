@@ -8,6 +8,7 @@ import Data.Map (Map)
 import System.FilePath.Posix (splitFileName, splitPath, takeDirectory)
 import qualified Data.Function as F (on)
 import Data.List
+import Control.Monad (when)
 
 rectWidth :: Rectangle -> Int
 rectWidth (Rectangle _ _ w _) = w
@@ -22,11 +23,11 @@ getGtkColorNoAlpha :: (Double, Double, Double, Double) -> Color
 getGtkColorNoAlpha (r, g, b, _) = Color (convertChannel r) (convertChannel g) (convertChannel b)
 
 convertChannel :: Double -> Word16
-convertChannel x = fromIntegral . round $ x*65535
+convertChannel x = fromIntegral (round (x*65535) :: Integer)
 
 readGtkColorAlpha :: Color -> Word16 -> (Double, Double, Double, Double)
 readGtkColorAlpha (Color r g b) alpha = (fromGtkChannel r, fromGtkChannel g, fromGtkChannel b, fromGtkChannel alpha)
-	where fromGtkChannel x = (fromIntegral x/65536)
+	where fromGtkChannel x = fromIntegral x/65536
 
 buttonSetColor :: ColorButtonClass self => self -> (Double, Double, Double, Double) -> IO ()
 buttonSetColor btn color@(_, _, _, a) = do
@@ -54,7 +55,7 @@ data BuilderHolder = BuilderHolder
 getBuilderHolder :: Builder -> IO BuilderHolder
 getBuilderHolder builder = do
 	binders <- newIORef $ Map.fromList []
-	return $ BuilderHolder
+	return BuilderHolder
 		{
 			boundBuilder = builder,
 			buttonBinders = binders
@@ -69,7 +70,7 @@ getBuilderHolder builder = do
 -- also gets invoked. To disconnect I need the
 -- connection ID, that I must store...
 -- TODO move to this pattern in more places
-builderHolderGetButtonBinder :: BuilderHolder -> String -> IO (ButtonBinder)
+builderHolderGetButtonBinder :: BuilderHolder -> String -> IO ButtonBinder
 builderHolderGetButtonBinder builderHolder btnName = do
 	bindersV <- readIORef $ buttonBinders builderHolder
 	case Map.lookup btnName bindersV of
@@ -91,12 +92,12 @@ data ButtonBinder = ButtonBinder
 buttonBindCallback :: ButtonBinder -> IO () -> IO ()
 buttonBindCallback btnBinder cb = do
 	cbId <- readIORef $ currentCbId btnBinder
-	whenIsJust cbId $ signalDisconnect
-	newCbId <- (boundButton btnBinder) `on` buttonActivated $ cb
+	whenIsJust cbId signalDisconnect
+	newCbId <- boundButton btnBinder `on` buttonActivated $ cb
 	modifyIORef (currentCbId btnBinder) $ const (Just newCbId)
 
 whenM :: Monad m => m Bool -> m () -> m ()
-whenM test action = test >>= \t -> if t then action else return ()
+whenM test action = test >>= \t -> when t action
 
 -- TODO move to the Data.Either implementation present in base 4.7.0
 isLeft :: Either a b -> Bool
@@ -129,7 +130,7 @@ getTargetFolder files = rootFolder ++ "/imprint"
 		pathDepths = map (length . splitPath) folders
 		foldersWithpathDepth = zip folders pathDepths
 		foldersWithDepthByDepth = sortBy (compare `F.on` snd) foldersWithpathDepth
-		smallestDepth = snd $ head $ foldersWithDepthByDepth
+		smallestDepth = snd $ head foldersWithDepthByDepth
 		isSeveralRootFolders = not $ null $ takeWhile ((==smallestDepth) . snd) $
 			tail foldersWithDepthByDepth
 		-- takeDirectory to remove the trailing /
