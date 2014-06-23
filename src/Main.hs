@@ -7,9 +7,9 @@ import Graphics.Rendering.Cairo hiding (width, height, x)
 import Graphics.UI.Gtk hiding (styleSet)
 import Graphics.HsExif (parseFileExif)
 import Data.IORef
-import Control.Monad (liftM, when, void)
+import Control.Monad (liftM, void)
 import Data.List
-import Data.Maybe (fromJust, isJust)
+import Data.Maybe (fromJust)
 import Data.AppSettings
 import Control.Concurrent (forkOS)
 import Text.Printf (printf)
@@ -96,58 +96,61 @@ showMainWindow builder latestConfig = do
 
 dragReceived :: DragContext -> TimeStamp -> BuilderHolder -> Window -> IORef Conf -> SelectionDataM ()
 dragReceived dragCtxt time builderHolder mainWindow latestConfig = do
-	let builder = boundBuilder builderHolder
 	mUris <- selectionDataGetURIs
 	let success = True
 	let deleteOriginal = False -- True for a move.
 	liftIO $ do
 		dragFinish dragCtxt success deleteOriginal time
-		when (isJust mUris) $ do
-			settings <- readIORef latestConfig
-			userCancel <- newIORef False -- should move to MVar?...
-			progressDialog <- builderGetObject builder castToDialog "progressDialog"
-			progressLabel <- builderGetObject builder castToLabel "progressLabel"
-			progressBar <- builderGetObject builder castToProgressBar "progressBar"
-			progressCancel <- builderGetObject builder castToButton "progressCancel"
-			progressClose <- builderGetObject builder castToButton "progressClose"
-			progressOpenTargetFolder <- builderHolderGetButtonBinder
-				builderHolder "progressOpenTargetFolder"
-			widgetSetSensitive (boundButton progressOpenTargetFolder) False
-			widgetShow progressCancel
-			widgetHide progressClose
-			errorsTreeview <- builderGetObject builder castToTreeView "errorsTreeview"
-			treeViewGetColumns errorsTreeview >>= mapM_ (treeViewRemoveColumn errorsTreeview)
-			errorsStore <- listStoreNew [ ErrorInfo "-" "Started the processing..."]
-			treeViewSetModel errorsTreeview errorsStore
-			treeViewSetFixedHeightMode errorsTreeview False
-			treeViewAddColumn errorsTreeview "Filename" errorsStore $ \(ErrorInfo p _) -> p
-			treeViewAddColumn errorsTreeview "Details" errorsStore $ \(ErrorInfo _ d) -> d
-			progressClose `on` buttonActivated $ widgetHide progressDialog
-			progressCancel `on` buttonActivated $ atomicWriteIORef userCancel True
-			let filenames = map filenameFromUri $ fromJust mUris
-			expandedFilenames <- expandFilenames filenames
-			let filesCount = length expandedFilenames
-			let targetFolder = getTargetFolder expandedFilenames
-			buttonBindCallback progressOpenTargetFolder $ openFolder targetFolder
+		whenIsJust mUris $ processDrop builderHolder latestConfig mainWindow
 
-			let pictureConvertCb = \fileIdx successInfo -> do
-				postGUIAsync $ do
-					labelSetText progressLabel $ printf "Processing image %d/%d" fileIdx filesCount
-					progressBarSetFraction progressBar $ fromIntegral fileIdx / fromIntegral filesCount
-				case successInfo of
-					Right _ -> postGUIAsync $ widgetSetSensitive (boundButton progressOpenTargetFolder) True
-					Left errorInfo -> postGUIAsync $ void (listStoreAppend errorsStore errorInfo)
+processDrop :: BuilderHolder -> IORef Conf -> Window -> [String] -> IO ()
+processDrop builderHolder latestConfig mainWindow uris = do
+	let builder = boundBuilder builderHolder
+	settings <- readIORef latestConfig
+	userCancel <- newIORef False -- should move to MVar?...
+	progressDialog <- builderGetObject builder castToDialog "progressDialog"
+	progressLabel <- builderGetObject builder castToLabel "progressLabel"
+	progressBar <- builderGetObject builder castToProgressBar "progressBar"
+	progressCancel <- builderGetObject builder castToButton "progressCancel"
+	progressClose <- builderGetObject builder castToButton "progressClose"
+	progressOpenTargetFolder <- builderHolderGetButtonBinder
+		builderHolder "progressOpenTargetFolder"
+	widgetSetSensitive (boundButton progressOpenTargetFolder) False
+	widgetShow progressCancel
+	widgetHide progressClose
+	errorsTreeview <- builderGetObject builder castToTreeView "errorsTreeview"
+	treeViewGetColumns errorsTreeview >>= mapM_ (treeViewRemoveColumn errorsTreeview)
+	errorsStore <- listStoreNew [ ErrorInfo "-" "Started the processing..."]
+	treeViewSetModel errorsTreeview errorsStore
+	treeViewSetFixedHeightMode errorsTreeview False
+	treeViewAddColumn errorsTreeview "Filename" errorsStore $ \(ErrorInfo p _) -> p
+	treeViewAddColumn errorsTreeview "Details" errorsStore $ \(ErrorInfo _ d) -> d
+	progressClose `on` buttonActivated $ widgetHide progressDialog
+	progressCancel `on` buttonActivated $ atomicWriteIORef userCancel True
+	let filenames = map filenameFromUri $ uris
+	expandedFilenames <- expandFilenames filenames
+	let filesCount = length expandedFilenames
+	let targetFolder = getTargetFolder expandedFilenames
+	buttonBindCallback progressOpenTargetFolder $ openFolder targetFolder
 
-			forkOS $ convertPictures expandedFilenames targetFolder settings userCancel pictureConvertCb $
-				postGUIAsync $ do
-					labelSetText progressLabel "Finished."
-					listStoreAppend errorsStore $ ErrorInfo "-" "Finished the processing."
-					widgetHide progressCancel
-					widgetShow progressClose
-			set progressDialog [windowTransientFor := mainWindow]
-			windowSetDefaultSize progressDialog 600 380
-			dialogRun progressDialog
-			widgetHide progressDialog
+	let pictureConvertCb = \fileIdx successInfo -> do
+		postGUIAsync $ do
+			labelSetText progressLabel $ printf "Processing image %d/%d" fileIdx filesCount
+			progressBarSetFraction progressBar $ fromIntegral fileIdx / fromIntegral filesCount
+		case successInfo of
+			Right _ -> postGUIAsync $ widgetSetSensitive (boundButton progressOpenTargetFolder) True
+			Left errorInfo -> postGUIAsync $ void (listStoreAppend errorsStore errorInfo)
+
+	forkOS $ convertPictures expandedFilenames targetFolder settings userCancel pictureConvertCb $
+		postGUIAsync $ do
+			labelSetText progressLabel "Finished."
+			listStoreAppend errorsStore $ ErrorInfo "-" "Finished the processing."
+			widgetHide progressCancel
+			widgetShow progressClose
+	set progressDialog [windowTransientFor := mainWindow]
+	windowSetDefaultSize progressDialog 600 380
+	dialogRun progressDialog
+	widgetHide progressDialog
 
 treeViewAddColumn :: TreeView -> String -> ListStore a -> (a -> String) -> IO ()
 treeViewAddColumn treeView colName treeModel modelToStr = do
