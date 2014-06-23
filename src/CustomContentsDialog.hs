@@ -52,7 +52,6 @@ showCustomContentsDialog :: WindowClass a => a -> BuilderHolder -> Model Display
 showCustomContentsDialog parent builderHolder displayItemModel = do
 	let builder = boundBuilder builderHolder
 	dialog <- builderGetObject builder castToDialog "customContentsDialog"
-	set dialog [windowTransientFor := parent]
 	customContentsEntry <- builderGetObject builder castToEntry "customContentsEntry"
 	curContents <- liftM itemContents $ readModel displayItemModel
 
@@ -110,8 +109,7 @@ showCustomContentsDialog parent builderHolder displayItemModel = do
 		widgetHide dialog
 	cancelBtn `on` buttonActivated $ widgetHide dialog
 
-	dialogRun dialog
-	widgetHide dialog
+	showDialog dialog parent
 
 textBeforeCursorFromSymbol :: String -> Entry -> IO (Maybe String)
 textBeforeCursorFromSymbol symbol entry = do

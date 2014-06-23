@@ -109,7 +109,7 @@ whenIsJust mA s = case mA of
 	Nothing -> return ()
 	Just x -> s x
 
-showDialog :: WindowClass a => Dialog -> a -> IO ()
+showDialog :: (DialogClass a, WindowClass b) => a -> b -> IO ()
 showDialog dialog parent = do
 	set dialog [windowTransientFor := parent]
 	dialogRun dialog >> widgetHide dialog

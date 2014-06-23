@@ -64,12 +64,9 @@ showMainWindow builder latestConfig = do
 	mainWindow `on` objectDestroy $ mainQuit
 
 	settingsDialog <- prepareSettingsDialog builder latestConfig
-	set settingsDialog [windowTransientFor := mainWindow]
 
 	toolbarPreferences <- builderGetObject builder castToToolButton "toolbarPreferences"
-	onToolButtonClicked toolbarPreferences $ do
-		dialogRun settingsDialog
-		widgetHide settingsDialog
+	onToolButtonClicked toolbarPreferences $ showDialog settingsDialog mainWindow
 
 	toolbarAbout <- builderGetObject builder castToToolButton "toolbarAbout"
 	onToolButtonClicked toolbarAbout $ do
@@ -77,10 +74,8 @@ showMainWindow builder latestConfig = do
 		set aboutDlg [aboutDialogProgramName := "Imprint",
 				aboutDialogLicense := Just "BSD license",
 				aboutDialogWebsite := "https://github.com/emmanueltouzery/imprint/",
-				aboutDialogComments:= "Add information about pictures as text painted on the pictures themselves.",
-				windowTransientFor := mainWindow]
-		dialogRun aboutDlg
-		widgetDestroy aboutDlg
+				aboutDialogComments:= "Add information about pictures as text painted on the pictures themselves."]
+		showDialog aboutDlg mainWindow
 
 	imprintDropDestination <- builderGetObject builder castToLabel "imprint_drop_destination"
 	dragDestSet imprintDropDestination [DestDefaultMotion, DestDefaultDrop] [ActionCopy]
@@ -147,10 +142,8 @@ processDrop builderHolder latestConfig mainWindow uris = do
 			listStoreAppend errorsStore $ ErrorInfo "-" "Finished the processing."
 			widgetHide progressCancel
 			widgetShow progressClose
-	set progressDialog [windowTransientFor := mainWindow]
 	windowSetDefaultSize progressDialog 600 380
-	dialogRun progressDialog
-	widgetHide progressDialog
+	showDialog progressDialog mainWindow
 
 treeViewAddColumn :: TreeView -> String -> ListStore a -> (a -> String) -> IO ()
 treeViewAddColumn treeView colName treeModel modelToStr = do
