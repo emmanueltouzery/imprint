@@ -24,7 +24,7 @@ makeLensesWith ?? ''TextStyle $ lensRules
 
 
 textStyles :: Setting [TextStyle]
-textStyles = ListSetting "textStyles" $ [
+textStyles = ListSetting "textStyles" [
 	TextStyle {
 		styleId = 1,
 		textStroke = (1, 0.5, 0, 1),
@@ -71,7 +71,7 @@ makeLensesWith ?? ''DisplayItem $ lensRules
   & lensField .~ (\name -> Just (name ++ "L"))
 
 displayItems :: Setting [DisplayItem]
-displayItems = ListSetting "displayItems" $ [
+displayItems = ListSetting "displayItems" [
 	DisplayItem {
 		textStyleId = 1,
 		textSizeFromWidth = 0.04,
@@ -91,6 +91,6 @@ readSettings :: IO (Conf, GetSetting)
 readSettings = AppSettings.readSettings (AutoFromAppName appName)
 
 saveSettings :: Conf -> IO ()
-saveSettings conf = AppSettings.saveSettings getAllSettings (AutoFromAppName appName) conf
+saveSettings = AppSettings.saveSettings getAllSettings (AutoFromAppName appName)
 
 -- TODO besides font name also add the date format string

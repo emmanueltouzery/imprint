@@ -109,6 +109,11 @@ whenIsJust mA s = case mA of
 	Nothing -> return ()
 	Just x -> s x
 
+showDialog :: WindowClass a => Dialog -> a -> IO ()
+showDialog dialog parent = do
+	set dialog [windowTransientFor := parent]
+	dialogRun dialog >> widgetHide dialog
+
 -- the user may have dropped a whole file hierarchy like
 -- Pictures, Pictures/2014, Pictures/2013 and so on.
 -- I don't want to fill in tons of imprint folders all

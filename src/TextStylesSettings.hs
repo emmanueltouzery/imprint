@@ -6,7 +6,7 @@ import Graphics.Rendering.Cairo hiding (width, height, x)
 import Graphics.Rendering.Cairo.SVG
 import Graphics.UI.Gtk hiding (styleSet)
 import Data.Maybe (fromJust)
-import Control.Monad (when, liftM)
+import Control.Monad (when, liftM, void)
 import Data.List
 import Control.Lens hiding (set)
 
@@ -51,7 +51,7 @@ showTextStyleListDialog builder displayItemsModel textStylesModel parent = do
 	activeItemSvg <- getDataFileName "active_item.svg" >>= svgNewFromFile
 	dialog <- builderGetObject builder castToDialog "dialog1"
 	stylesVbox <- builderGetObject builder castToBox "stylesVbox"
-	containerForeach stylesVbox (\w -> containerRemove stylesVbox w)
+	containerForeach stylesVbox $ containerRemove stylesVbox
 
 	-- set the current text style in the list to the text style
 	-- of the current display item.
@@ -67,9 +67,7 @@ showTextStyleListDialog builder displayItemsModel textStylesModel parent = do
 	styles <- readListModel textStylesModel
 	mapM_ (vboxAddStyleItem dialog stylesVbox ctxt activeItemSvg textStyleDialogInfo displayItemsModel textStylesModel) styles
 	windowSetDefaultSize dialog 600 500
-	set dialog [windowTransientFor := parent]
-	dialogRun dialog
-	widgetHide dialog
+	showDialog dialog parent
 
 prepareTextStyleDrawingArea :: PangoContext -> PangoLayout -> DrawingArea -> Model TextStyle -> IO ()
 prepareTextStyleDrawingArea ctxt text drawingArea textStyleModel = do
@@ -104,8 +102,8 @@ vboxAddStyleItem parent box ctxt activeItemSvg textStyleDialogInfo displayItemsM
 		selectedStyleId <- liftIO $ listModelGetCurrentItem textStylesModel >>= readModel . fromJust
 		when (selectedStyleId == cTextStyle) $ do
 			translate 0 $ fromIntegral cbYtop
-			svgRender activeItemSvg >> return ()
-			translate 0 $ (-fromIntegral cbYtop)
+			void $ svgRender activeItemSvg
+			translate 0 (-fromIntegral cbYtop)
 
 	let styleSelectCb = liftIO $ do
 		cTextStyle <- readModel curStyleModel
@@ -137,8 +135,7 @@ vboxAddStyleItem parent box ctxt activeItemSvg textStyleDialogInfo displayItemsM
 		
 	containerAdd vbtnBox copyBtn
 	editBtn <- prepareButton stockEdit
-	editBtn `on` buttonActivated $ do
-		showTextStyleDialog parent textStyleDialogInfo curStyleModel
+	editBtn `on` buttonActivated $ showTextStyleDialog parent textStyleDialogInfo curStyleModel
  	containerAdd vbtnBox editBtn
 	deleteBtn <- prepareButton stockDelete
 	deleteBtn `on` buttonActivated $ do
@@ -154,8 +151,7 @@ vboxAddStyleItem parent box ctxt activeItemSvg textStyleDialogInfo displayItemsM
 drawTextStylePreview :: DrawingArea -> PangoContext -> PangoLayout -> Model TextStyle -> Render ()
 drawTextStylePreview drawingArea ctxt text curStyleModel = do
 	cTextStyle <- liftIO $ readModel curStyleModel
-	fontSize <- liftIO $ do
-		setFontSizeForWidget ctxt text drawingArea cTextStyle
+	fontSize <- liftIO $ setFontSizeForWidget ctxt text drawingArea cTextStyle
 	renderText text ctxt cTextStyle $ fromIntegral fontSize
 
 removeTextStyle :: Dialog -> Box -> ListModel TextStyle -> ListModel DisplayItem -> Model TextStyle -> IO ()
@@ -167,7 +163,7 @@ removeTextStyle parent box textStylesModel displayItemsModel textStyleModel = do
 		then displayError parent "Cannot delete the selected text style"
 		else do
 			cStyles <- readListModel textStylesModel
-			let styleIdx = fromJust $ findIndex (==textStyleModel) cStyles
+			let styleIdx = fromJust $ elemIndex textStyleModel cStyles
 			listModelRemoveItem textStylesModel textStyleModel
 			boxWidgets <- containerGetChildren box
 			containerRemove box $ boxWidgets !! styleIdx
@@ -223,7 +219,7 @@ prepareTextStyleDialog builder textStyle = do
 	fontButton <- builderGetObject builder castToFontButton "fontButton"
 	bindModel textStyleModel fontNameL fontButton
 
-	addModelObserver textStyleModel $ \_ -> do
+	addModelObserver textStyleModel $ const $
 		--setFontSizeForWidget ctxt text textPreview
 		-- the following however is always needed.
 		widgetQueueDraw textPreview
@@ -244,9 +240,7 @@ showTextStyleDialog parent (TextStyleDialogInfo curTextStyle textStyleBtnOk dial
 		widgetHide dialog
 	
 	windowSetDefaultSize dialog 450 300
-	set dialog [windowTransientFor := parent]
-	dialogRun dialog
-	widgetHide dialog
+	showDialog dialog parent
 	return ()
 
 setFontSizeForWidget :: WidgetClass a => PangoContext -> PangoLayout -> a -> TextStyle -> IO Int

@@ -124,7 +124,7 @@ customContentsCompletionCb completionModel entry _ iter = do
 	let candidate = completionModel !! listStoreIterToIndex iter
 	beforePercent <- textBeforeCursorFromSymbol "%" entry
 	beforeDate <- textBeforeCursorFromSymbol "%date{" entry
-	let inDateContext = isJust beforeDate && not ("}" `isInfixOf` (fromJust beforeDate))
+	let inDateContext = isJust beforeDate && not ("}" `isInfixOf` fromJust beforeDate)
 	case beforePercent of
 		Nothing -> return False
 		Just fromPercent | inDateContext ->
