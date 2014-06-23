@@ -5,9 +5,9 @@ module Main where
 import Graphics.UI.Gtk.Gdk.Pixbuf
 import Graphics.Rendering.Cairo hiding (width, height, x)
 import Graphics.UI.Gtk hiding (styleSet)
-import Graphics.HsExif (parseFileExif)
+import Graphics.HsExif
 import Data.IORef
-import Control.Monad (liftM, void)
+import Control.Monad (liftM, void, when)
 import Data.List
 import Data.Maybe (fromJust)
 import Data.AppSettings
@@ -223,18 +223,31 @@ convertPictureImpl settings filename targetFilename = do
 	img <- pixbufNewFromFile filename
 	width <- pixbufGetWidth img
 	height <- pixbufGetHeight img
-	sur <- createImageSurface FormatRGB24 width height
+	let (rotationAngle, newDimensions) = case getOrientation exifData of
+		Just (Rotation MinusNinety) -> (pi/2, (height, width))
+		Just (Rotation Ninety) -> (-pi/2, (height, width))
+		Just (Rotation HundredAndEighty) -> (pi, (width, height))
+		_ -> (0, (width, height))
+
+	sur <- uncurry (createImageSurface FormatRGB24) newDimensions
 	ctxt <- cairoCreateContext Nothing
 	text <- layoutEmpty ctxt
 
 	let imageInfo = ImageInfo filename exifData
 
 	renderWith sur $ do
+		save
+		let (w, h) = newDimensions
+		when (rotationAngle /= 0) $ do
+			translate (fromIntegral $ w `div` 2) (fromIntegral $ h `div` 2)
+			rotate rotationAngle
+			translate (fromIntegral $ -h `div` 2) (fromIntegral $ -w `div` 2)
 		setSourcePixbuf img 0 0
 		paint
-		renderFrame width height imageInfo text ctxt $ getDisplayItemsStylesConf settings
+		restore
+		renderFrame w h imageInfo text ctxt $ getDisplayItemsStylesConf settings
 
-	pbuf <- pixbufNewFromSurface sur 0 0 width height
+	pbuf <- uncurry (pixbufNewFromSurface sur 0 0) newDimensions
 
 	let targetFolder = fst $ splitFileName targetFilename
 	createDirectoryIfMissing True targetFolder
