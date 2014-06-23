@@ -38,7 +38,10 @@ testPercent = it "parses a percent sign" $ do
 
 testComposite :: Spec
 testComposite = it "parses a composite string" $ do
-	assertEqual' (Right $ [StringContents "picture ", Filename, StringContents ", taken on: ", DateFormat "%x HH:MM", StringContents ". f/", ExifContents fnumber]) $ parseFormat "picture %file, taken on: %date{%x HH:MM}. f/%aper"
+	assertEqual' (Right $ [StringContents "picture ", Filename,
+			StringContents ", taken on: ", DateFormat "%x HH:MM",
+			StringContents ". f/", ExifContents fnumber]) 
+			$ parseFormat "picture %file, taken on: %date{%x HH:MM}. f/%aper"
 
 testShouldFail :: Spec
 testShouldFail = it "fails parsing a bad string" $ do
