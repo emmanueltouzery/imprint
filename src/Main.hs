@@ -117,12 +117,7 @@ processDrop builderHolder latestConfig mainWindow uris = do
 	widgetShow progressCancel
 	widgetHide progressClose
 	errorsTreeview <- builderGetObject builder castToTreeView "errorsTreeview"
-	treeViewGetColumns errorsTreeview >>= mapM_ (treeViewRemoveColumn errorsTreeview)
-	errorsStore <- listStoreNew [ ErrorInfo "-" "Started the processing..."]
-	treeViewSetModel errorsTreeview errorsStore
-	treeViewSetFixedHeightMode errorsTreeview False
-	treeViewAddColumn errorsTreeview "Filename" errorsStore $ \(ErrorInfo p _) -> p
-	treeViewAddColumn errorsTreeview "Details" errorsStore $ \(ErrorInfo _ d) -> d
+	errorsStore <- prepareErrorsTreeView errorsTreeview
 	progressClose `on` buttonActivated $ widgetHide progressDialog
 	progressCancel `on` buttonActivated $ atomicWriteIORef userCancel True
 	let filenames = map filenameFromUri uris
@@ -146,6 +141,16 @@ processDrop builderHolder latestConfig mainWindow uris = do
 			widgetShow progressClose
 	windowSetDefaultSize progressDialog 600 380
 	showDialog progressDialog mainWindow
+
+prepareErrorsTreeView :: TreeView -> IO (ListStore ErrorInfo)
+prepareErrorsTreeView errorsTreeview = do
+	treeViewGetColumns errorsTreeview >>= mapM_ (treeViewRemoveColumn errorsTreeview)
+	errorsStore <- listStoreNew [ ErrorInfo "-" "Started the processing..."]
+	treeViewSetModel errorsTreeview errorsStore
+	treeViewSetFixedHeightMode errorsTreeview False
+	treeViewAddColumn errorsTreeview "Filename" errorsStore $ \(ErrorInfo p _) -> p
+	treeViewAddColumn errorsTreeview "Details" errorsStore $ \(ErrorInfo _ d) -> d
+	return errorsStore
 
 treeViewAddColumn :: TreeView -> String -> ListStore a -> (a -> String) -> IO ()
 treeViewAddColumn treeView colName treeModel modelToStr = do
