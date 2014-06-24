@@ -103,7 +103,7 @@ renderDisplayItem width height imageInfo text ctxt displayItem textStyle = do
 
 	let marginX = floor $ fromIntegral width * marginXFromWidth displayItem
 	let marginY = floor $ fromIntegral width * marginYFromWidth displayItem
-	let textSizePoints = fromIntegral width * textSizeFromWidth displayItem
+	let textSizePoints = fromIntegral (max width height) * textSizeFromWidth displayItem
 	-- renderText will also set the font, but I must do it
 	-- before already to get the right font metrics...
 	liftIO $ updateFontFromTextStyle ctxt text textStyle textSizePoints
