@@ -15,9 +15,9 @@ import Control.Concurrent (forkOS)
 import Text.Printf (printf)
 import qualified Data.Map as Map (empty)
 #ifdef CABAL_OS_WINDOWS
-import System.FilePath.Posix (splitFileName, pathSeparator)
-#else
 import System.FilePath.Windows (splitFileName, pathSeparator)
+#else
+import System.FilePath.Posix (splitFileName, pathSeparator)
 #endif
 import Control.Exception (try, SomeException)
 import System.GIO.File.File (filePath, fileFromURI)
