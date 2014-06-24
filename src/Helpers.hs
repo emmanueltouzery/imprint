@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Helpers where
 
 import Graphics.UI.Gtk
@@ -5,7 +6,11 @@ import Data.Word
 import Data.IORef
 import qualified Data.Map as Map
 import Data.Map (Map)
+#ifdef CABAL_OS_WINDOWS
 import System.FilePath.Posix (splitFileName, splitPath, takeDirectory)
+#else
+import System.FilePath.Windows (splitFileName, splitPath, takeDirectory)
+#endif
 import qualified Data.Function as F (on)
 import Data.List
 import Control.Monad (when)

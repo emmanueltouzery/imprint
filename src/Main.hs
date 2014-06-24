@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables, CPP #-}
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 module Main where
 
@@ -13,7 +13,11 @@ import Data.Maybe (fromJust)
 import Data.AppSettings
 import Control.Concurrent (forkOS)
 import Text.Printf (printf)
+#ifdef CABAL_OS_WINDOWS
 import System.FilePath.Posix (splitFileName, pathSeparator)
+#else
+import System.FilePath.Windows (splitFileName, pathSeparator)
+#endif
 import Control.Exception (try, SomeException)
 import System.GIO.File.File (filePath, fileFromURI)
 import Data.ByteString.UTF8 (toString)
@@ -199,7 +203,7 @@ convertPictures files targetFolder settings userCancel pictureConvertedCb doneCb
 openFolder :: FilePath -> IO ()
 openFolder folderPath = if pathSeparator == '/'
 			then void (rawSystem "xdg-open" [folderPath]) -- linux
-			else void (runCommand $ "start \"" ++ folderPath ++ "\"") -- windows
+			else void (runCommand $ "start \"\" \"" ++ folderPath ++ "\"") -- windows
 	
 
 -- Careful this is in another thread...
