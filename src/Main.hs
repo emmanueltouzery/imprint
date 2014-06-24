@@ -13,6 +13,7 @@ import Data.Maybe (fromJust)
 import Data.AppSettings
 import Control.Concurrent (forkOS)
 import Text.Printf (printf)
+import qualified Data.Map as Map (empty)
 #ifdef CABAL_OS_WINDOWS
 import System.FilePath.Posix (splitFileName, pathSeparator)
 #else
@@ -225,7 +226,7 @@ convertPictureImpl :: Conf -> String -> String -> IO ()
 convertPictureImpl settings filename targetFilename = do
 	exifInfo <- parseFileExif filename
 	let exifData = case exifInfo of
-		Left errorStr -> error errorStr
+		Left _ -> Map.empty
 		Right exif -> exif
 
 	img <- pixbufNewFromFile filename
