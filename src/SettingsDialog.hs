@@ -100,18 +100,8 @@ prepareSettingsDialog builder latestConfig = do
 	displayItemPositionCombo <- builderGetObject builder castToComboBox "displayItemPositionCombo"
 
 	positionDeleteButton <- builderGetObject builder castToButton "positionDeleteButton"
-	positionDeleteButton `on` buttonActivated $ do
-		confirm <- dialogYesNo settingsDialog "Are you sure to remove the display item?"
-		when confirm $ do
-			itemToRemove <- liftM fromJust $ listModelGetCurrentItem displayItemsModel 
-			newCurItem <- liftM (find (/= itemToRemove)) $ readListModel displayItemsModel
-			case newCurItem of
-				Nothing -> displayError settingsDialog "Can't delete the last display item"
-				Just newItem -> do
-					listModelSetCurrentItem displayItemsModel newItem
-					newPos <- liftM position $ readModel newItem
-					comboBoxSelectPosition displayItemPositionCombo newPos
-					listModelRemoveItem displayItemsModel itemToRemove
+	positionDeleteButton `on` buttonActivated $
+		handlePositionDelete settingsDialog displayItemsModel displayItemPositionCombo
 
 	builderHolder <- getBuilderHolder builder
 
@@ -152,7 +142,6 @@ prepareSettingsDialog builder latestConfig = do
 				getCurItem >>= showCustomContentsDialog settingsDialog builderHolder
 		modifyIORef contentsComboChangedConnectId $ const $ Just newComboConnectId
 
-
 	readListModel displayItemsModel >>= listModelSetCurrentItem displayItemsModel . head
 
 	liftM position (getCurItem >>= readModel) >>= comboBoxSelectPosition displayItemPositionCombo
@@ -171,6 +160,20 @@ prepareSettingsDialog builder latestConfig = do
 	windowSetDefaultSize settingsDialog 600 500
 	return settingsDialog
 	--prepareTextStylePreview builder latestConfig
+
+handlePositionDelete :: Dialog -> ListModel DisplayItem -> ComboBox -> IO ()
+handlePositionDelete settingsDialog displayItemsModel displayItemPositionCombo = do
+	confirm <- dialogYesNo settingsDialog "Are you sure to remove the display item?"
+	when confirm $ do
+		itemToRemove <- liftM fromJust $ listModelGetCurrentItem displayItemsModel 
+		newCurItem <- liftM (find (/= itemToRemove)) $ readListModel displayItemsModel
+		case newCurItem of
+			Nothing -> displayError settingsDialog "Can't delete the last display item"
+			Just newItem -> do
+				listModelSetCurrentItem displayItemsModel newItem
+				newPos <- liftM position $ readModel newItem
+				comboBoxSelectPosition displayItemPositionCombo newPos
+				listModelRemoveItem displayItemsModel itemToRemove
 
 comboIndexes :: [(Int, ItemPosition)]
 comboIndexes = [(0, TopLeft), (1, TopCenter), (2, TopRight),
