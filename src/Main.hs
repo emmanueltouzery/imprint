@@ -69,13 +69,7 @@ showMainWindow builder latestConfig = do
 	onToolButtonClicked toolbarPreferences $ showDialog settingsDialog mainWindow
 
 	toolbarAbout <- builderGetObject builder castToToolButton "toolbarAbout"
-	onToolButtonClicked toolbarAbout $ do
-		aboutDlg <- aboutDialogNew
-		set aboutDlg [aboutDialogProgramName := "Imprint",
-				aboutDialogLicense := Just "BSD license",
-				aboutDialogWebsite := "https://github.com/emmanueltouzery/imprint/",
-				aboutDialogComments:= "Add information about pictures as text painted on the pictures themselves."]
-		showDialog aboutDlg mainWindow
+	onToolButtonClicked toolbarAbout $ showAboutDialog mainWindow
 
 	imprintDropDestination <- builderGetObject builder castToLabel "imprint_drop_destination"
 	dragDestSet imprintDropDestination [DestDefaultMotion, DestDefaultDrop] [ActionCopy]
@@ -88,6 +82,15 @@ showMainWindow builder latestConfig = do
 
 	windowSetDefaultSize mainWindow 600 500
 	widgetShowAll mainWindow
+
+showAboutDialog :: Window -> IO ()
+showAboutDialog mainWindow = do
+	aboutDlg <- aboutDialogNew
+	set aboutDlg [aboutDialogProgramName := "Imprint",
+			aboutDialogLicense := Just "BSD license",
+			aboutDialogWebsite := "https://github.com/emmanueltouzery/imprint/",
+			aboutDialogComments:= "Add information about pictures as text painted on the pictures themselves."]
+	showDialog aboutDlg mainWindow
 
 dragReceived :: DragContext -> TimeStamp -> BuilderHolder -> Window -> IORef Conf -> SelectionDataM ()
 dragReceived dragCtxt time builderHolder mainWindow latestConfig = do
