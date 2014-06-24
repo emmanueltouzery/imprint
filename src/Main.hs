@@ -131,13 +131,12 @@ processDrop builderHolder latestConfig mainWindow uris = do
 	let targetFolder = getTargetFolder expandedFilenames
 	buttonBindCallback progressOpenTargetFolder $ openFolder targetFolder
 
-	let pictureConvertCb = \fileIdx successInfo -> do
-		postGUIAsync $ do
-			labelSetText progressLabel $ printf "Processing image %d/%d" fileIdx filesCount
-			progressBarSetFraction progressBar $ fromIntegral fileIdx / fromIntegral filesCount
+	let pictureConvertCb = \fileIdx successInfo -> postGUIAsync $ do
+		labelSetText progressLabel $ printf "Processing image %d/%d" fileIdx filesCount
+		progressBarSetFraction progressBar $ fromIntegral fileIdx / fromIntegral filesCount
 		case successInfo of
-			Right _ -> postGUIAsync $ widgetSetSensitive (boundButton progressOpenTargetFolder) True
-			Left errorInfo -> postGUIAsync $ void (listStoreAppend errorsStore errorInfo)
+			Right _ -> widgetSetSensitive (boundButton progressOpenTargetFolder) True
+			Left errorInfo -> void (listStoreAppend errorsStore errorInfo)
 
 	forkOS $ convertPictures expandedFilenames targetFolder settings userCancel pictureConvertCb $
 		postGUIAsync $ do
@@ -192,7 +191,6 @@ convertPictures files targetFolder settings userCancel pictureConvertedCb doneCb
 	mapM_ (uncurry $ convertPicture settings targetFolder userCancel pictureConvertedCb) $ zip files [1..]
 	doneCb
 
--- TODO make it actually open the folder..
 openFolder :: FilePath -> IO ()
 openFolder folderPath = if pathSeparator == '/'
 			then void (rawSystem "xdg-open" [folderPath]) -- linux
