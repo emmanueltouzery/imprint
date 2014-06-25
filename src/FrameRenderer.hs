@@ -1,6 +1,8 @@
+{-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 module FrameRenderer (renderFrame, renderText, parseFormat,
-	FormatElement(..), ImageInfo(..), getTextToRender) where
+	FormatElement(..), ImageInfo(..), getTextToRender,
+	EnvironmentInfo(..)) where
 
 import Graphics.UI.Gtk
 import Graphics.Rendering.Cairo hiding (width, height, x, y)
@@ -13,6 +15,12 @@ import Data.Time.Format (formatTime)
 import System.Locale (defaultTimeLocale)
 import Graphics.HsExif
 import Text.ParserCombinators.Parsec
+import System.Directory (getHomeDirectory)
+#ifdef CABAL_OS_WINDOWS
+import System.FilePath.Windows (splitFileName, pathSeparator, takeDirectory, dropExtension)
+#else
+import System.FilePath.Posix (splitFileName, pathSeparator, takeDirectory, dropExtension)
+#endif
 
 import Settings
 import Helpers
@@ -21,6 +29,8 @@ data FormatElement = StringContents String
 	| DateFormat String
 	| ExifContents ExifTag
 	| Filename
+	| Foldername
+	| Folderhierarchy
 	deriving (Show, Eq)
 
 parseFormat :: String -> Either String [FormatElement]
@@ -52,6 +62,8 @@ parseFormatItem :: GenParser Char st FormatElement
 parseFormatItem = do
 	string "%"
 	(try (string "file") >> return Filename)
+		<|> (try (string "folderhier") >> return Folderhierarchy)
+		<|> (try (string "folder") >> return Foldername)
 		<|> (try (string "expo_bias") >> return (ExifContents exposureBiasValue))
 		<|> (try (string "expo") >> return (ExifContents exposureTime))
 		<|> (try (string "aper") >> return (ExifContents fnumber))
@@ -70,24 +82,41 @@ parseString = do
 
 data ImageInfo = ImageInfo
 	{
-		imgFilename :: String,
+		imgFullPath :: String,
 		imgExifTags :: Map ExifTag ExifValue
 	}
 
-getFormatElementValue :: ImageInfo -> FormatElement -> String
-getFormatElementValue imageInfo Filename = imgFilename imageInfo
-getFormatElementValue (ImageInfo _ exifTags) (ExifContents tag) =
-	maybe "No data" showFunction $ Map.lookup tag exifTags
+data EnvironmentInfo = EnvironmentInfo
+	{
+		userHomeDirectory :: FilePath
+	}
+
+getFormatElementValue :: ImageInfo -> EnvironmentInfo -> FormatElement -> String
+getFormatElementValue imageInfo envInfo format
+	| format == Filename = dropExtension $ snd $ splitFileName $ imgFullPath imageInfo -- TODO drop the extension
+	| format == Folderhierarchy =
+		case () of _
+				| picturesFolder `isPrefixOf` folderPath -> drop (length picturesFolder) folderPath
+				| homeDir `isPrefixOf` folderPath -> drop (length homeDir+1) folderPath
+				| otherwise -> folderPath
+	| format == Foldername = snd $ splitFileName $ takeDirectory $ fst $ splitFileName $ imgFullPath imageInfo
+	| (ExifContents tag) <- format = maybe "No data" (showFunction tag) $ Map.lookup tag exifTags
+	| (DateFormat dateFmt) <- format = fromMaybe "No data" $ liftM (formatTime defaultTimeLocale dateFmt)
+		$ getDateTimeOriginal exifTags
+	| (StringContents str) <- format = str
+	| otherwise = error "Unmatched parameters for getFormatElementValue"
 	where
-		showFunction
+		folderPath = fst $ splitFileName $ imgFullPath imageInfo
+		picturesFolder = homeDir ++ [pathSeparator] ++ "Pictures"
+		homeDir = userHomeDirectory envInfo
+		exifTags = imgExifTags imageInfo
+		showFunction tag
 			| tag `elem` [fnumber, exposureBiasValue] = formatAsFloatingPoint 2
 			| otherwise = show
-getFormatElementValue (ImageInfo _ exifTags) (DateFormat dateFormatStr) = fromMaybe "No data"
-	$ liftM (formatTime defaultTimeLocale dateFormatStr) $ getDateTimeOriginal exifTags
-getFormatElementValue _ (StringContents str) = str
 
-getTextToRender :: DisplayItem -> ImageInfo -> String
-getTextToRender displayItem imageInfo = foldl' (\s fe -> s ++ getFormatElementValue imageInfo fe) "" formatElements
+getTextToRender :: DisplayItem -> ImageInfo -> EnvironmentInfo -> String
+getTextToRender displayItem imageInfo envInfo =
+	foldl' (\s fe -> s ++ getFormatElementValue imageInfo envInfo fe) "" formatElements
 	where formatElements = case parseFormat $ itemContents displayItem of
 		Right c -> c
 		-- TODO error in the GUI?
@@ -99,7 +128,8 @@ renderFrame width height imageInfo text ctxt = mapM_ $ uncurry $ renderDisplayIt
 
 renderDisplayItem :: Int -> Int -> ImageInfo -> PangoLayout -> PangoContext -> DisplayItem -> TextStyle -> Render ()
 renderDisplayItem width height imageInfo text ctxt displayItem textStyle = do
-	let textToRender = getTextToRender displayItem imageInfo
+	homeDir <- liftIO getHomeDirectory
+	let textToRender = getTextToRender displayItem imageInfo $ EnvironmentInfo homeDir
 	liftIO $ layoutSetText text textToRender
 
 	let marginX = floor $ fromIntegral width * marginXFromWidth displayItem

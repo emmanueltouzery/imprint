@@ -1,11 +1,19 @@
+{-# LANGUAGE CPP #-}
 module SettingsWindowData where
 
 import Graphics.HsExif
 import qualified Data.Map as Map
 import FrameRenderer
 
+demoFilename :: FilePath
+#ifdef CABAL_OS_WINDOWS
+demoFilename = "c:\\Users\\user\\Pictures\\2014\\filename.jpg"
+#else
+demoFilename = "/home/user/Pictures/2014/filename.jpg"
+#endif
+
 fakeImageInfo :: ImageInfo
-fakeImageInfo = ImageInfo "filename.jpg" $ Map.fromList [
+fakeImageInfo = ImageInfo demoFilename $ Map.fromList [
 	(exposureTime, ExifText "1/160"),
 	(fnumber, ExifText "3.6"),
 	(isoSpeedRatings, ExifText "200"),
@@ -34,7 +42,9 @@ data PlaceHolder = PlaceHolder
 
 placeHolders :: [PlaceHolder]
 placeHolders = [
-	PlaceHolder "Filename" "%file" "%file",
+	PlaceHolder "File name" "%file" "%file",
+	PlaceHolder "Folder name" "%folder" "%folder",
+	PlaceHolder "Folder hierarchy" "%folderhier" "%folderhier",
 	PlaceHolder "Date" "%date{%x}" "%date{%x}",
 	PlaceHolder "Date and time" "%date{%x %R}" "%date{%x %R}",
 	PlaceHolder "Date and time, seconds" "%date{%x %X}" "%date{%x %X}",

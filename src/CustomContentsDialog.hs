@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 module CustomContentsDialog where
 
@@ -35,6 +36,13 @@ completionDataDate = [
 	("Day of week, long form, Sunday-Saturday", "%A")
 	]
 
+defaultEnvironmentInfo :: EnvironmentInfo
+#ifdef CABAL_OS_WINDOWS
+defaultEnvironmentInfo = EnvironmentInfo "c:\\Users\\user"
+#else
+defaultEnvironmentInfo = EnvironmentInfo "/home/user"
+#endif
+
 data CompletionRecordType = NormalCompletion | DateCompletion
 	deriving (Eq, Show)
 
@@ -65,7 +73,7 @@ showCustomContentsDialog parent builderHolder displayItemModel = do
 		text <- entryGetText customContentsEntry
 		let isParseOk = not $ isLeft $ parseFormat text 
 		labelSetMarkup parseResultLabel $ if isParseOk
-			then getTextToRender (defaultDisplayItem {itemContents = text}) fakeImageInfo
+			then getTextToRender (defaultDisplayItem {itemContents = text}) fakeImageInfo defaultEnvironmentInfo
 			else "<span color='red'><b>Incorrect syntax</b></span>"
 		widgetSetSensitivity okBtn isParseOk
 	entrySetText customContentsEntry curContents
