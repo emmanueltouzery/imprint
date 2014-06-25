@@ -151,6 +151,7 @@ prepareSettingsDialog builder latestConfig = do
 	settingsOkBtn <- builderGetObject builder castToButton "settingsOk"
 	settingsOkBtn `on` buttonActivated $ do
 		updatedConf <- liftIO $ updateConfFromModel latestConfig displayItemsModel textStylesModel
+		modifyIORef latestConfig $ const updatedConf
 		saveSettings updatedConf
 		widgetHide settingsDialog
 
