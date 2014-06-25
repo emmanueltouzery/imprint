@@ -124,13 +124,17 @@ getTextToRender displayItem imageInfo envInfo =
 
 -- TODO not possible to get the current pango context myself?
 renderFrame :: Int -> Int -> ImageInfo -> PangoLayout -> PangoContext -> [(DisplayItem, TextStyle)] -> Render ()
-renderFrame width height imageInfo text ctxt = mapM_ $ uncurry $ renderDisplayItem width height imageInfo text ctxt
+renderFrame width height imageInfo text ctxt itemsStyles = do
+	liftIO $ layoutSetEllipsize text EllipsizeEnd
+	mapM_ (uncurry $ renderDisplayItem width height imageInfo text ctxt) itemsStyles
 
 renderDisplayItem :: Int -> Int -> ImageInfo -> PangoLayout -> PangoContext -> DisplayItem -> TextStyle -> Render ()
 renderDisplayItem width height imageInfo text ctxt displayItem textStyle = do
 	homeDir <- liftIO getHomeDirectory
 	let textToRender = getTextToRender displayItem imageInfo $ EnvironmentInfo homeDir
 	liftIO $ layoutSetText text textToRender
+
+	liftIO $ layoutSetWidth text $ Just $ maxWidthFromWidth displayItem * fromIntegral width
 
 	let marginX = floor $ fromIntegral width * marginXFromWidth displayItem
 	let marginY = floor $ fromIntegral width * marginYFromWidth displayItem

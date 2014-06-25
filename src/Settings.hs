@@ -53,8 +53,7 @@ textStyles = ListSetting "textStyles" [
 		fontName = Nothing,
 		backColor = (0, 0, 0, 0),
 		backBorderRadiusHeightRatio = 0
-	}
-	]
+	}]
 
 data ItemPosition = TopLeft
 	| TopCenter
@@ -71,7 +70,8 @@ data DisplayItem = DisplayItem
 		marginXFromWidth :: Double,
 		marginYFromWidth :: Double,
 		position :: ItemPosition,
-		itemContents :: String
+		itemContents :: String,
+		maxWidthFromWidth :: Double
 	} deriving (Show, Read, Eq)
 --
 -- http://stackoverflow.com/questions/17132514/
@@ -86,9 +86,9 @@ displayItems = ListSetting "displayItems" [
 		marginXFromWidth = 0.025,
 		marginYFromWidth = 0.025,
 		position = BottomRight,
-		itemContents = "%date{%x}"
-	}
-	]
+		itemContents = "%date{%x}",
+		maxWidthFromWidth = 0.35
+	}]
 
 getAllSettings :: DefaultConfig
 getAllSettings = getDefaultConfig $ do

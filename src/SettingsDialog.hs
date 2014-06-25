@@ -90,6 +90,10 @@ prepareSettingsDialog builder latestConfig = do
 	verticalMarginScale <- builderGetObject builder castToScale "verticalMarginScale"
 	let verMarginRangeBindInfo = horMarginRangeBindInfo { range = verticalMarginScale }
 
+	maxWidthScale <- builderGetObject builder castToScale "maxWidthScale"
+	let maxWidthScaleBindInfo = horMarginRangeBindInfo
+		{ range = maxWidthScale, lowerV = 10, upperV = 100 }
+
 	text <- layoutEmpty ctxt
 	text `layoutSetText` "2014-04-01"
 	textStylePreview `on` draw $ do
@@ -124,6 +128,7 @@ prepareSettingsDialog builder latestConfig = do
 		bindModel currentDisplayItemModel marginXFromWidthL horMarginRangeBindInfo
 		bindModel currentDisplayItemModel textSizeFromWidthL scaleRangeBindInfo
 		bindModel currentDisplayItemModel marginYFromWidthL verMarginRangeBindInfo
+		bindModel currentDisplayItemModel maxWidthFromWidthL maxWidthScaleBindInfo
 		bindModel currentDisplayItemModel itemContentsL comboContentsBindInfo
 		let redraw = do
 			widgetQueueDraw imageLayout
