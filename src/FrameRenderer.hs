@@ -1,8 +1,9 @@
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
-module FrameRenderer (renderFrame, renderText, parseFormat, FormatElement(..), ImageInfo(..), getTextToRender) where
+module FrameRenderer (renderFrame, renderText, parseFormat,
+	FormatElement(..), ImageInfo(..), getTextToRender) where
 
 import Graphics.UI.Gtk
-import Graphics.Rendering.Cairo hiding (width, height, x)
+import Graphics.Rendering.Cairo hiding (width, height, x, y)
 import Control.Monad (liftM)
 import Data.Map (Map)
 import qualified Data.Map as Map
@@ -126,13 +127,36 @@ renderDisplayItem width height imageInfo text ctxt displayItem textStyle = do
 renderText :: PangoLayout -> PangoContext -> TextStyle -> Double -> Render ()
 renderText text ctxt textStyle fontSize = do
 	liftIO $ updateFontFromTextStyle ctxt text textStyle fontSize
+	(Rectangle rX rY rWidth rHeight) <- liftM snd $ liftIO (layoutGetPixelExtents text)
+
+	(curX, curY) <- getCurrentPoint
+	roundedRect (backBorderRadiusHeightRatio textStyle * fromIntegral rHeight)
+		(fromIntegral rX) (fromIntegral rY) (fromIntegral rWidth) (fromIntegral rHeight)
+	setSourceRGBA `applyColor` backColor textStyle
+	fill
+	moveTo curX curY
+
 	layoutPath text
 	setSourceRGBA `applyColor` textFill textStyle
 	fillPreserve
 	setSourceRGBA `applyColor` textStroke textStyle
-	(Rectangle _ _ _ rHeight) <- liftM snd $ liftIO (layoutGetPixelExtents text)
 	setLineWidth $ fromIntegral rHeight * strokeHeightRatio textStyle
 	stroke
+
+roundedRect :: Double -> Double -> Double -> Double -> Double -> Render ()
+roundedRect cornerRadius x y width height = do
+	(curX, curY) <- getCurrentPoint
+	-- http://cairographics.org/samples/rounded_rectangle/
+	let degrees = pi / 180
+	let leftEdge = x + cornerRadius + curX
+	let topEdge = y + cornerRadius + curY
+	let rightEdge = x + width - cornerRadius + curX
+	let bottomEdge = y + height-cornerRadius + curY
+	arc rightEdge topEdge cornerRadius (-90*degrees) 0
+	arc rightEdge bottomEdge cornerRadius 0 (90*degrees)
+	arc leftEdge bottomEdge cornerRadius (90*degrees) (180*degrees)
+	arc leftEdge topEdge cornerRadius (180*degrees) (270*degrees)
+	closePath
 
 updateFontFromTextStyle :: PangoContext -> PangoLayout -> TextStyle -> Double -> IO ()
 updateFontFromTextStyle ctxt text textStyle fontSize = do

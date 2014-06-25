@@ -16,7 +16,9 @@ data TextStyle = TextStyle
 		textStroke :: ColorRgba,
 		textFill :: ColorRgba,
 		strokeHeightRatio :: Double,
-		fontName :: Maybe String
+		fontName :: Maybe String,
+		backColor :: ColorRgba,
+		backBorderRadiusHeightRatio :: Double
 	} deriving (Show, Read, Eq)
 -- http://stackoverflow.com/questions/17132514/
 makeLensesWith ?? ''TextStyle $ lensRules
@@ -30,21 +32,27 @@ textStyles = ListSetting "textStyles" [
 		textStroke = (1, 0.5, 0, 1),
 		textFill = (1, 1, 0, 1),
 		strokeHeightRatio = 0.04,
-		fontName = Nothing
+		fontName = Nothing,
+		backColor = (0, 0, 0, 0),
+		backBorderRadiusHeightRatio = 0
 	},
 	TextStyle {
 		styleId = 2,
 		textStroke = (0, 0, 0, 1),
 		textFill = (1, 1, 1, 1),
 		strokeHeightRatio = 0.010,
-		fontName = Nothing
+		fontName = Nothing,
+		backColor = (0, 0, 0, 0.75),
+		backBorderRadiusHeightRatio = 0.2
 	},
 	TextStyle {
 		styleId = 3,
 		textStroke = (1, 1, 1, 1),
 		textFill = (0, 0, 0, 1),
 		strokeHeightRatio = 0.04,
-		fontName = Nothing
+		fontName = Nothing,
+		backColor = (0, 0, 0, 0),
+		backBorderRadiusHeightRatio = 0
 	}
 	]
 

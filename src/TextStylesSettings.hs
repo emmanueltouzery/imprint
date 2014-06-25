@@ -203,6 +203,7 @@ prepareTextStyleDialog builder textStyle = do
 
 	builderGetObject builder castToColorButton "fillColor" >>= bindModel textStyleModel textFillL
 	builderGetObject builder castToColorButton "strokeColor" >>= bindModel textStyleModel textStrokeL
+	builderGetObject builder castToColorButton "backColor" >>= bindModel textStyleModel backColorL
 
 	borderScale <- builderGetObject builder castToScale "borderScale"
 	let rangeBindInfo = RangeBindInfo
@@ -215,6 +216,18 @@ prepareTextStyleDialog builder textStyle = do
 			pageSize = 1
 		}
 	bindModel textStyleModel strokeHeightRatioL rangeBindInfo
+
+	backBorderRadiusScale <- builderGetObject builder castToScale "backBorderRadiusScale"
+	let rangeBindInfoRadius = RangeBindInfo
+		{
+			range = backBorderRadiusScale,
+			lowerV = 0,
+			upperV = 50,
+			stepIncr = 2,
+			pageIncr = 1,
+			pageSize = 1
+		}
+	bindModel textStyleModel backBorderRadiusHeightRatioL rangeBindInfoRadius
 
 	fontButton <- builderGetObject builder castToFontButton "fontButton"
 	bindModel textStyleModel fontNameL fontButton
@@ -239,7 +252,7 @@ showTextStyleDialog parent (TextStyleDialogInfo curTextStyle textStyleBtnOk dial
 		readModel curTextStyle >>= modifyModel textStyleModel . const
 		widgetHide dialog
 	
-	windowSetDefaultSize dialog 450 300
+	windowSetDefaultSize dialog 450 400
 	showDialog dialog parent
 	return ()
 
