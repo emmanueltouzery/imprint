@@ -15,11 +15,11 @@ import qualified Data.Function as F (on)
 import Data.List
 import Control.Monad (when)
 
-rectWidth :: Rectangle -> Int
-rectWidth (Rectangle _ _ w _) = w
+import Text.I18N.GetText (getText)
+import System.IO.Unsafe (unsafePerformIO)
 
-rectHeight :: Rectangle -> Int
-rectHeight (Rectangle _ _ _ h) = h
+__ :: String -> String
+__ = unsafePerformIO . getText
 
 applyColor :: (Double->Double->Double->Double->a) -> (Double,Double,Double,Double) -> a
 applyColor f (r,g,b,a) = f r g b a

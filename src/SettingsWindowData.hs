@@ -4,6 +4,7 @@ module SettingsWindowData where
 import Graphics.HsExif
 import qualified Data.Map as Map
 import FrameRenderer
+import Helpers
 
 demoFilename :: FilePath
 #ifdef CABAL_OS_WINDOWS
@@ -42,19 +43,19 @@ data PlaceHolder = PlaceHolder
 
 placeHolders :: [PlaceHolder]
 placeHolders = [
-	PlaceHolder "File name" "%file" "%file",
-	PlaceHolder "Folder name" "%folder" "%folder",
-	PlaceHolder "Folder hierarchy" "%folderhier" "%folderhier",
-	PlaceHolder "Date" "%date{%x}" "%date{%x}",
-	PlaceHolder "Date and time" "%date{%x %R}" "%date{%x %R}",
-	PlaceHolder "Date and time, seconds" "%date{%x %X}" "%date{%x %X}",
-	PlaceHolder "Exposition time" "%expo" "%expo",
-	PlaceHolder "Aperture" "%aper" "f/%aper",
-	PlaceHolder "ISO" "%iso" "ISO %iso",
-	PlaceHolder "Exposure bias" "%expo_bias" "%expo_bias",
-	PlaceHolder "Make" "%make" "%make",
-	PlaceHolder "Model" "%model" "%model",
-	PlaceHolder "Software" "%soft" "%soft",
-	PlaceHolder "Copyright" "%copy" "©%copy",
-	PlaceHolder "Focal length (35mm)" "%focal35" "%focal35mm"
+	PlaceHolder (__ "File name") "%file" "%file",
+	PlaceHolder (__ "Folder name") "%folder" "%folder",
+	PlaceHolder (__ "Folder hierarchy") "%folderhier" "%folderhier",
+	PlaceHolder (__ "Date") "%date{%x}" "%date{%x}",
+	PlaceHolder (__ "Date and time") "%date{%x %R}" "%date{%x %R}",
+	PlaceHolder (__ "Date and time, seconds") "%date{%x %X}" "%date{%x %X}",
+	PlaceHolder (__ "Exposition time") "%expo" "%expo",
+	PlaceHolder (__ "Aperture") "%aper" "f/%aper",
+	PlaceHolder (__ "ISO") "%iso" "ISO %iso",
+	PlaceHolder (__ "Exposure bias") "%expo_bias" "%expo_bias",
+	PlaceHolder (__ "Make") "%make" "%make",
+	PlaceHolder (__ "Model") "%model" "%model",
+	PlaceHolder (__ "Software") "%soft" "%soft",
+	PlaceHolder (__ "Copyright") "%copy" "©%copy",
+	PlaceHolder (__ "Focal length (35mm)") "%focal35" "%focal35mm"
 	]

@@ -100,8 +100,10 @@ getFormatElementValue imageInfo envInfo format
 				| homeDir `isPrefixOf` folderPath -> drop (length homeDir+1) folderPath
 				| otherwise -> folderPath
 	| format == Foldername = snd $ splitFileName $ takeDirectory $ fst $ splitFileName $ imgFullPath imageInfo
-	| (ExifContents tag) <- format = maybe "No data" (showFunction tag) $ Map.lookup tag exifTags
-	| (DateFormat dateFmt) <- format = fromMaybe "No data" $ liftM (formatTime defaultTimeLocale dateFmt)
+	| (ExifContents tag) <- format = maybe (__ "No data")
+		(showFunction tag) $ Map.lookup tag exifTags
+	| (DateFormat dateFmt) <- format = fromMaybe (__ "No data")
+		$ liftM (formatTime defaultTimeLocale dateFmt)
 		$ getDateTimeOriginal exifTags
 	| (StringContents str) <- format = str
 	| otherwise = error "Unmatched parameters for getFormatElementValue"

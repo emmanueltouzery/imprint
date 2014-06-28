@@ -139,7 +139,7 @@ vboxAddStyleItem parent box ctxt activeItemSvg textStyleDialogInfo displayItemsM
  	containerAdd vbtnBox editBtn
 	deleteBtn <- prepareButton stockDelete
 	deleteBtn `on` buttonActivated $ do
-		userConfirms <- dialogYesNo parent "Sure to delete the text style?"
+		userConfirms <- dialogYesNo parent $ __ "Sure to delete the text style?"
 		when userConfirms $ removeTextStyle parent box textStylesModel displayItemsModel curStyleModel
 		
 	containerAdd vbtnBox deleteBtn
@@ -160,7 +160,7 @@ removeTextStyle parent box textStylesModel displayItemsModel textStyleModel = do
 	displayItemsV <- readListModel displayItemsModel >>= mapM readModel
 	let usedTextStyleIds = fmap textStyleId displayItemsV
 	if styleIdToRemove `elem` usedTextStyleIds
-		then displayError parent "Cannot delete the selected text style"
+		then displayError parent $ __ "Cannot delete the selected text style"
 		else do
 			cStyles <- readListModel textStylesModel
 			let styleIdx = fromJust $ elemIndex textStyleModel cStyles

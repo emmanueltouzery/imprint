@@ -12,10 +12,16 @@ author:              Emmanuel Touzery
 maintainer:          etouzery@gmail.com
 -- copyright:           
 category:            Graphics
-build-type:          Simple
+build-type:          Custom
+
 data-files:          imprint.ui active_item.svg
 -- extra-source-files:  
 cabal-version:       >=1.10
+
+Extra-Source-Files:     po/*.po po/*.pot
+
+x-gettext-po-files:     po/*.po 
+x-gettext-domain-name:  imprint
 
 executable imprint
   main-is:             Main.hs
@@ -37,10 +43,19 @@ executable imprint
                        split == 0.2.*,
                        gio == 0.12.*,
                        bytestring == 0.10.*,
+                       process == 1.1.*,
                        utf8-string == 0.3.*,
-                       process == 1.1.*
+                       -- hgettext normally requires setLocale. Can't build that one on windows.
+                       -- for windows I made myself a hgettext which doesn't depend on setlocale
+                       -- and I use that one...
+                       hgettext >= 0.1.5
+
+  if !os(windows)
+    build-depends:     setlocale == 0.0.*
+
   if os(windows)
     cpp-options: -DCABAL_OS_WINDOWS
+
   hs-source-dirs: src
   default-language:    Haskell2010
   Ghc-Options:         -Wall -threaded

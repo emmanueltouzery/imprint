@@ -16,24 +16,24 @@ import Helpers
 
 completionDataDate :: [(String, String)]
 completionDataDate = [
-	("Date formatted in your system language", "%x"),
-	("Hours and minutes", "%R"),
-	("Hours, minutes and seconds", "%X"),
-	("Hour of the day (24h). 00-23", "%H"),
-	("Hour of the day (24h). 0-23", "%k"),
-	("Hour of half-day (12h). 01-12", "%I"),
-	("Hour of half-day (12h). 1-12", "%l"),
-	("Minute of hour, 00-59", "%M"),
-	("Second of minute, 00-60", "%S"),
-	("Year", "%Y"),
-	("Year of century, 00-99", "%y"),
-	("Month name, long form, January-December", "%B"),
-	("Month name, short form, Jan-Dec", "%b"),
-	("Month of year, 01-12", "%m"),
-	("Day of month, 01-31", "%d"),
-	("Day of month, 1-31", "%e"),
-	("Day of week, short form, Sun-Sat", "%a"),
-	("Day of week, long form, Sunday-Saturday", "%A")
+	(__ "Date formatted in your system language", "%x"),
+	(__ "Hours and minutes", "%R"),
+	(__ "Hours, minutes and seconds", "%X"),
+	(__ "Hour of the day (24h). 00-23", "%H"),
+	(__ "Hour of the day (24h). 0-23", "%k"),
+	(__ "Hour of half-day (12h). 01-12", "%I"),
+	(__ "Hour of half-day (12h). 1-12", "%l"),
+	(__ "Minute of hour, 00-59", "%M"),
+	(__ "Second of minute, 00-60", "%S"),
+	(__ "Year", "%Y"),
+	(__ "Year of century, 00-99", "%y"),
+	(__ "Month name, long form, January-December", "%B"),
+	(__ "Month name, short form, Jan-Dec", "%b"),
+	(__ "Month of year, 01-12", "%m"),
+	(__ "Day of month, 01-31", "%d"),
+	(__ "Day of month, 1-31", "%e"),
+	(__ "Day of week, short form, Sun-Sat", "%a"),
+	(__ "Day of week, long form, Sunday-Saturday", "%A")
 	]
 
 defaultEnvironmentInfo :: EnvironmentInfo
@@ -74,15 +74,15 @@ showCustomContentsDialog parent builderHolder displayItemModel = do
 		let isParseOk = not $ isLeft $ parseFormat text 
 		labelSetMarkup parseResultLabel $ if isParseOk
 			then getTextToRender (defaultDisplayItem {itemContents = text}) fakeImageInfo defaultEnvironmentInfo
-			else "<span color='red'><b>Incorrect syntax</b></span>"
+			else __ "<span color='red'><b>Incorrect syntax</b></span>"
 		widgetSetSensitivity okBtn isParseOk
 	entrySetText customContentsEntry curContents
 
 	completion <- entryCompletionNew
 	let completionData = fmap (uncurry $ CompletionRecord NormalCompletion) completionComboData 
-				++ [CompletionRecord NormalCompletion "% sign" "%%"] 
+				++ [CompletionRecord NormalCompletion (__ "% sign") "%%"] 
 				++ fmap (uncurry $ CompletionRecord DateCompletion) completionDataDate
-				++ [CompletionRecord DateCompletion "% sign" "%%"] 
+				++ [CompletionRecord DateCompletion (__ "% sign") "%%"] 
 	completionStore <- listStoreNew completionData
 	entryCompletionSetModel completion $ Just completionStore
 	cellValue <- cellRendererTextNew

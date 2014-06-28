@@ -680,7 +680,6 @@ Dates are special because they can be formatted in many ways and so for a date y
           <object class="GtkLabel" id="progressLabel">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
-            <property name="label" translatable="yes">label</property>
           </object>
           <packing>
             <property name="expand">False</property>

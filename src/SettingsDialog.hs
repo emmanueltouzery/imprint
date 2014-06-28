@@ -45,7 +45,7 @@ prepareSettingsDialog builder latestConfig = do
 		{
 			comboWidget = contentsCombo,
 			comboValues = contentsComboData,
-			comboExtraValues = ["Advanced"],
+			comboExtraValues = [__ "Advanced"],
 			defaultIndex = length contentsComboData,
 			comboConnectId = cId
 		}
@@ -169,12 +169,12 @@ prepareSettingsDialog builder latestConfig = do
 
 handlePositionDelete :: Dialog -> ListModel DisplayItem -> ComboBox -> IO ()
 handlePositionDelete settingsDialog displayItemsModel displayItemPositionCombo = do
-	confirm <- dialogYesNo settingsDialog "Are you sure to remove the display item?"
+	confirm <- dialogYesNo settingsDialog $ __ "Are you sure to remove the display item?"
 	when confirm $ do
 		itemToRemove <- liftM fromJust $ listModelGetCurrentItem displayItemsModel 
 		newCurItem <- liftM (find (/= itemToRemove)) $ readListModel displayItemsModel
 		case newCurItem of
-			Nothing -> displayError settingsDialog "Can't delete the last display item"
+			Nothing -> displayError settingsDialog $ __ "Can't delete the last display item"
 			Just newItem -> do
 				listModelSetCurrentItem displayItemsModel newItem
 				newPos <- liftM position $ readModel newItem
@@ -213,7 +213,7 @@ comboBoxSelectPosition combo itemPosition = case find ((==itemPosition) . snd) c
 
 offerCreate :: Dialog -> ItemPosition -> ListModel DisplayItem -> IO Bool
 offerCreate parent itemPosition displayItemsModel = do
-	isCreate <- dialogYesNo parent "There is no item to display at that position. Create one?"
+	isCreate <- dialogYesNo parent $ __ "There is no item to display at that position. Create one?"
 	if isCreate
 		then do
 			displayItemTemplate <- listModelGetCurrentItem displayItemsModel >>= readModel . fromJust

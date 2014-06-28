@@ -26,6 +26,19 @@ import System.Directory (createDirectoryIfMissing, doesDirectoryExist, getDirect
 import Control.Applicative
 import System.Process (rawSystem, runCommand)
 
+import Text.I18N.GetText
+#ifdef CABAL_OS_WINDOWS
+import Data.Map (Map)
+import qualified Data.Map as Map hiding (empty)
+import Control.Monad (unless)
+--import System.Win32.Types
+import Foreign.C.Types
+import Foreign.C.String
+import GHC.Windows
+#else
+import System.Locale.SetLocale (setLocale, Category(LC_ALL))
+#endif
+
 import Paths_imprint (getDataFileName)
 
 import Settings
@@ -38,6 +51,27 @@ minFontSize = 5
 
 main :: IO ()
 main = do
+#ifndef CABAL_OS_WINDOWS
+	setLocale LC_ALL (Just "") 
+	bindTextDomain __MESSAGE_CATALOG_DOMAIN__ (Just __MESSAGE_CATALOG_DIR__)
+	textDomain $ Just __MESSAGE_CATALOG_DOMAIN__
+#else
+	setEnv_ "OUTPUT_CHARSET" "utf8"
+	-- gettext checks $LANG but it's not what windows uses...
+	-- find out the language from windows and write the
+	-- $LANG so that the app starts in the correct language...
+	winLang <- liftM fromIntegral getUserDefaultUILanguage
+	let locale = Map.lookup winLang localesMap
+	whenIsJust locale $ \localeStr -> do
+		putEnv "OUTPUT_CHARSET=utf8"
+		setEnv_ "LANG" localeStr --"fr_FR.UTF8"
+		putEnv $ "LANG=" ++ localeStr -- fr_FR.UTF8"
+	-- TODO because I hardcode ./po will only work
+	-- when started from the right folder...
+	bindTextDomain "imprint" (Just "po")
+	textDomain $ Just "imprint"
+#endif
+
 	initGUI
 
 	-- TODO this must go in a try
@@ -61,6 +95,55 @@ main = do
 	showMainWindow builder latestConfig
 
 	mainGUI
+
+-- TODO move me to a windows-specific file...
+#ifdef CABAL_OS_WINDOWS
+
+localesMap :: Map Int String
+localesMap = Map.fromList [
+	(1036, "fr_FR.UTF8"),
+	(2060, "fr_FR.UTF8"),
+	(11276, "fr_FR.UTF8"),
+	(3084, "fr_FR.UTF8"),
+	(9228, "fr_FR.UTF8"),
+	(12300, "fr_FR.UTF8"),
+	(15372, "fr_FR.UTF8"),
+	(5132, "fr_FR.UTF8"),
+	(13324, "fr_FR.UTF8"),
+	(6156, "fr_FR.UTF8"),
+	(14348, "fr_FR.UTF8"),
+	(58380, "fr_FR.UTF8"),
+	(8204, "fr_FR.UTF8"),
+	(10252, "fr_FR.UTF8"),
+	(4108, "fr_FR.UTF8"),
+	(7180, "fr_FR.UTF8")]
+
+-- http://msdn.microsoft.com/en-us/goglobal/bb964664.aspx
+foreign import stdcall unsafe "GetUserDefaultUILanguage"
+    getUserDefaultUILanguage :: IO CUShort
+
+setEnv_ :: String -> String -> IO () 
+setEnv_ key value = withCString key $ \k -> withCString value $ \v -> do 
+  success <- c_SetEnvironmentVariable k v 
+  unless success (throwGetLastError "setEnv") 
+
+putEnv :: String -> IO ()
+putEnv v = void (withCString v $ \vv -> c_putenv vv)
+ 
+foreign import stdcall unsafe "windows.h SetEnvironmentVariableA" 
+  c_SetEnvironmentVariable :: CString -> CString -> IO Bool 
+-- #ifdef CABAL_OS_WINDOWS
+-- SetEnv_ :: String -> String -> IO () 
+-- SetEnv_ key value = withCWString key $ \k -> withCWString value $ \v -> do 
+--   success <- c_SetEnvironmentVariable k v 
+--   unless success (throwGetLastError "setEnv") 
+--  
+-- Foreign import stdcall unsafe "windows.h SetEnvironmentVariableW" 
+--   c_SetEnvironmentVariable :: LPTSTR -> LPTSTR -> IO Bool 
+-- #endif
+
+foreign import ccall unsafe "putenv" c_putenv :: CString -> IO CInt 
+#endif
 
 showMainWindow :: Builder -> IORef Conf -> IO ()
 showMainWindow builder latestConfig = do
@@ -94,7 +177,7 @@ showAboutDialog mainWindow = do
 	set aboutDlg [aboutDialogProgramName := "Imprint",
 			aboutDialogLicense := Just "BSD license",
 			aboutDialogWebsite := "https://github.com/emmanueltouzery/imprint/",
-			aboutDialogComments:= "Add information about pictures as text painted on the pictures themselves."]
+			aboutDialogComments:= __ "Add information about pictures as text painted on the pictures themselves."]
 	showDialog aboutDlg mainWindow
 
 dragReceived :: DragContext -> TimeStamp -> BuilderHolder -> Window -> IORef Conf -> SelectionDataM ()
@@ -140,8 +223,8 @@ processDrop builderHolder latestConfig mainWindow uris = do
 
 	forkOS $ convertPictures expandedFilenames targetFolder settings userCancel pictureConvertCb $
 		postGUIAsync $ do
-			labelSetText progressLabel "Finished."
-			listStoreAppend errorsStore $ ErrorInfo "-" "Finished the processing."
+			labelSetText progressLabel $ __ "Finished."
+			listStoreAppend errorsStore $ ErrorInfo "-" $ __ "Finished the processing."
 			widgetHide progressCancel
 			widgetShow progressClose
 	windowSetDefaultSize progressDialog 600 380
@@ -150,7 +233,7 @@ processDrop builderHolder latestConfig mainWindow uris = do
 prepareErrorsTreeView :: TreeView -> IO (ListStore ErrorInfo)
 prepareErrorsTreeView errorsTreeview = do
 	treeViewGetColumns errorsTreeview >>= mapM_ (treeViewRemoveColumn errorsTreeview)
-	errorsStore <- listStoreNew [ ErrorInfo "-" "Started the processing..."]
+	errorsStore <- listStoreNew [ ErrorInfo "-" $ __ "Started the processing..."]
 	treeViewSetModel errorsTreeview errorsStore
 	treeViewSetFixedHeightMode errorsTreeview False
 	treeViewAddColumn errorsTreeview "Filename" errorsStore $ \(ErrorInfo p _) -> p
@@ -213,7 +296,7 @@ convertPicture settings targetFolder userCancel pictureConvertedCb filename file
 	isUserCancel <- readIORef userCancel
 	let logError = pictureConvertedCb fileIdx . Left . ErrorInfo filename
 	if isUserCancel
-		then logError "User cancelled"
+		then logError $ __ "User cancelled"
 		else do
 			(result :: Either SomeException ()) <- try $
 				convertPictureImpl settings filename $ getTargetFileName filename targetFolder
