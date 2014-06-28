@@ -14,7 +14,7 @@ maintainer:          etouzery@gmail.com
 category:            Graphics
 build-type:          Custom
 
-data-files:          imprint.ui active_item.svg
+data-files:          imprint.ui active_item.svg imprint.svg
 -- extra-source-files:  
 cabal-version:       >=1.10
 

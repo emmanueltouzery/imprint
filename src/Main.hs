@@ -173,11 +173,14 @@ showMainWindow builder latestConfig = do
 
 showAboutDialog :: Window -> IO ()
 showAboutDialog mainWindow = do
+	logoFname <- getDataFileName "imprint.svg"
+	logoPixbuf <- pixbufNewFromFileAtSize logoFname 128 128
 	aboutDlg <- aboutDialogNew
-	set aboutDlg [aboutDialogProgramName := "Imprint",
-			aboutDialogLicense := Just "BSD license",
-			aboutDialogWebsite := "https://github.com/emmanueltouzery/imprint/",
-			aboutDialogComments:= __ "Add information about pictures as text painted on the pictures themselves."]
+	set aboutDlg [aboutDialogProgramName:= "Imprint",
+			aboutDialogLicense  := Just "BSD license",
+			aboutDialogWebsite  := "https://github.com/emmanueltouzery/imprint/",
+			aboutDialogComments := __ "Add information about pictures as text painted on the pictures themselves.",
+			aboutDialogLogo     := Just logoPixbuf]
 	showDialog aboutDlg mainWindow
 
 dragReceived :: DragContext -> TimeStamp -> BuilderHolder -> Window -> IORef Conf -> SelectionDataM ()
