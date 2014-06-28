@@ -244,11 +244,11 @@ getHeightMultiplier aspectRatioCombo = do
 
 getDisplayItemsStyles :: ListModel DisplayItem -> ListModel TextStyle -> IO [(DisplayItem, TextStyle)]
 getDisplayItemsStyles displayItemsModel textStylesModel = do
-		displayItemsV <- readListModel displayItemsModel >>= mapM readModel
-		allTextStylesV <- readListModel textStylesModel >>= mapM readModel
-		let textStyleById sId = find ((==sId) . styleId) allTextStylesV
-		let textStylesV = fmap (fromJust . textStyleById  . textStyleId) displayItemsV
-		return $ zip displayItemsV textStylesV
+	displayItemsV <- readListModel displayItemsModel >>= mapM readModel
+	allTextStylesV <- readListModel textStylesModel >>= mapM readModel
+	let textStyleById sId = find ((==sId) . styleId) allTextStylesV
+	let textStylesV = fmap (fromJust . textStyleById  . textStyleId) displayItemsV
+	return $ zip displayItemsV textStylesV
 
 drawImageLayout :: DrawingArea -> ComboBox -> ListModel DisplayItem -> ListModel TextStyle -> PangoLayout -> PangoContext -> Render ()
 drawImageLayout drawingArea aspectRatioCombo displayItemsModel textStylesModel text ctxt = do
