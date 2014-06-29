@@ -14,6 +14,10 @@
           <object class="GtkEntry" id="customContentsEntry">
             <property name="visible">True</property>
             <property name="can_focus">True</property>
+            <property name="margin_left">6</property>
+            <property name="margin_right">6</property>
+            <property name="margin_top">6</property>
+            <property name="margin_bottom">6</property>
           </object>
           <packing>
             <property name="expand">False</property>
@@ -65,6 +69,10 @@
           <object class="GtkLabel" id="label13">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
+            <property name="margin_left">6</property>
+            <property name="margin_right">6</property>
+            <property name="margin_top">6</property>
+            <property name="margin_bottom">6</property>
             <property name="label" translatable="yes">&lt;small&gt;Using this dialog you can specify a custom format for the data to display. Special placeholders will be replaced by dynamic data from the picture (for install date and so on).
 The place holders start with the '%' character. Type that character and a popup will appear offering you a list.
 
@@ -141,6 +149,10 @@ Dates are special because they can be formatted in many ways and so for a date y
               <object class="GtkLabel" id="label8">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
+                <property name="margin_left">6</property>
+                <property name="margin_right">6</property>
+                <property name="margin_top">6</property>
+                <property name="margin_bottom">6</property>
                 <property name="label" translatable="yes">Please select a text style</property>
               </object>
               <packing>
@@ -279,6 +291,8 @@ Dates are special because they can be formatted in many ways and so for a date y
                       <object class="GtkLabel" id="label10">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="margin_left">6</property>
+                        <property name="margin_right">6</property>
                         <property name="label" translatable="yes">Preview aspect ratio:</property>
                       </object>
                       <packing>
@@ -291,6 +305,8 @@ Dates are special because they can be formatted in many ways and so for a date y
                       <object class="GtkComboBoxText" id="aspect_ratio_combo">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="margin_left">6</property>
+                        <property name="margin_right">6</property>
                         <property name="active">0</property>
                         <items>
                           <item id="0" translatable="yes">4:3 - compact cameras</item>
@@ -325,7 +341,10 @@ Dates are special because they can be formatted in many ways and so for a date y
                   <object class="GtkLabel" id="label1">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
-                    <property name="label" translatable="yes">Contents</property>
+                    <property name="margin_left">6</property>
+                    <property name="margin_right">6</property>
+                    <property name="xalign">0</property>
+                    <property name="label" translatable="yes">Contents:</property>
                   </object>
                   <packing>
                     <property name="left_attach">0</property>
@@ -342,6 +361,7 @@ Dates are special because they can be formatted in many ways and so for a date y
                       <object class="GtkDrawingArea" id="textstylepreview">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="margin_left">6</property>
                       </object>
                       <packing>
                         <property name="expand">True</property>
@@ -355,6 +375,7 @@ Dates are special because they can be formatted in many ways and so for a date y
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
+                        <property name="margin_right">6</property>
                       </object>
                       <packing>
                         <property name="expand">False</property>
@@ -374,6 +395,10 @@ Dates are special because they can be formatted in many ways and so for a date y
                   <object class="GtkLabel" id="label12">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="margin_left">6</property>
+                    <property name="margin_right">6</property>
+                    <property name="xalign">0</property>
+                    <property name="xpad">5</property>
                     <property name="label" translatable="yes">Item to edit:</property>
                   </object>
                   <packing>
@@ -387,7 +412,10 @@ Dates are special because they can be formatted in many ways and so for a date y
                   <object class="GtkLabel" id="label2">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
-                    <property name="label" translatable="yes">Text style</property>
+                    <property name="margin_left">6</property>
+                    <property name="margin_right">6</property>
+                    <property name="xalign">0</property>
+                    <property name="label" translatable="yes">Text style:</property>
                   </object>
                   <packing>
                     <property name="left_attach">0</property>
@@ -400,7 +428,10 @@ Dates are special because they can be formatted in many ways and so for a date y
                   <object class="GtkLabel" id="label7">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
-                    <property name="label" translatable="yes">Size</property>
+                    <property name="margin_left">6</property>
+                    <property name="margin_right">6</property>
+                    <property name="xalign">0</property>
+                    <property name="label" translatable="yes">Size:</property>
                   </object>
                   <packing>
                     <property name="left_attach">0</property>
@@ -413,6 +444,8 @@ Dates are special because they can be formatted in many ways and so for a date y
                   <object class="GtkScale" id="textSizeScale">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
+                    <property name="margin_left">6</property>
+                    <property name="margin_right">6</property>
                     <property name="round_digits">1</property>
                   </object>
                   <packing>
@@ -426,6 +459,8 @@ Dates are special because they can be formatted in many ways and so for a date y
                   <object class="GtkScale" id="horizontalMarginScale">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
+                    <property name="margin_left">6</property>
+                    <property name="margin_right">6</property>
                     <property name="round_digits">1</property>
                   </object>
                   <packing>
@@ -439,7 +474,9 @@ Dates are special because they can be formatted in many ways and so for a date y
                   <object class="GtkLabel" id="label9">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
-                    <property name="label" translatable="yes">Horizontal margin</property>
+                    <property name="margin_left">6</property>
+                    <property name="margin_right">6</property>
+                    <property name="label" translatable="yes">Horizontal margin:</property>
                   </object>
                   <packing>
                     <property name="left_attach">0</property>
@@ -452,7 +489,10 @@ Dates are special because they can be formatted in many ways and so for a date y
                   <object class="GtkLabel" id="label11">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
-                    <property name="label" translatable="yes">Vertical margin</property>
+                    <property name="margin_left">6</property>
+                    <property name="margin_right">6</property>
+                    <property name="xalign">0</property>
+                    <property name="label" translatable="yes">Vertical margin:</property>
                   </object>
                   <packing>
                     <property name="left_attach">0</property>
@@ -465,6 +505,8 @@ Dates are special because they can be formatted in many ways and so for a date y
                   <object class="GtkScale" id="verticalMarginScale">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
+                    <property name="margin_left">6</property>
+                    <property name="margin_right">6</property>
                     <property name="round_digits">1</property>
                   </object>
                   <packing>
@@ -483,6 +525,8 @@ Dates are special because they can be formatted in many ways and so for a date y
                         <property name="height_request">30</property>
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="margin_left">6</property>
+                        <property name="margin_right">6</property>
                       </object>
                       <packing>
                         <property name="expand">True</property>
@@ -496,6 +540,7 @@ Dates are special because they can be formatted in many ways and so for a date y
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
+                        <property name="margin_right">6</property>
                         <property name="use_stock">True</property>
                         <property name="always_show_image">True</property>
                       </object>
@@ -521,6 +566,7 @@ Dates are special because they can be formatted in many ways and so for a date y
                       <object class="GtkComboBoxText" id="displayItemPositionCombo">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="margin_left">6</property>
                         <items>
                           <item id="0" translatable="yes">Top left</item>
                           <item id="1" translatable="yes">Top center</item>
@@ -542,6 +588,7 @@ Dates are special because they can be formatted in many ways and so for a date y
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">True</property>
+                        <property name="margin_right">6</property>
                         <property name="use_stock">True</property>
                         <property name="always_show_image">True</property>
                       </object>
@@ -563,7 +610,10 @@ Dates are special because they can be formatted in many ways and so for a date y
                   <object class="GtkLabel" id="label16">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
-                    <property name="label" translatable="yes">Max width</property>
+                    <property name="margin_left">6</property>
+                    <property name="margin_right">6</property>
+                    <property name="xalign">0</property>
+                    <property name="label" translatable="yes">Max width:</property>
                   </object>
                   <packing>
                     <property name="left_attach">0</property>
@@ -576,6 +626,8 @@ Dates are special because they can be formatted in many ways and so for a date y
                   <object class="GtkScale" id="maxWidthScale">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
+                    <property name="margin_left">6</property>
+                    <property name="margin_right">6</property>
                     <property name="round_digits">1</property>
                   </object>
                   <packing>
@@ -850,6 +902,8 @@ Dates are special because they can be formatted in many ways and so for a date y
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
+                    <property name="margin_left">6</property>
+                    <property name="margin_right">6</property>
                     <property name="use_alpha">True</property>
                   </object>
                   <packing>
@@ -864,6 +918,8 @@ Dates are special because they can be formatted in many ways and so for a date y
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
+                    <property name="margin_left">6</property>
+                    <property name="margin_right">6</property>
                     <property name="use_alpha">True</property>
                   </object>
                   <packing>
@@ -877,6 +933,8 @@ Dates are special because they can be formatted in many ways and so for a date y
                   <object class="GtkScale" id="borderScale">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
+                    <property name="margin_left">6</property>
+                    <property name="margin_right">6</property>
                     <property name="round_digits">1</property>
                   </object>
                   <packing>
@@ -890,7 +948,10 @@ Dates are special because they can be formatted in many ways and so for a date y
                   <object class="GtkLabel" id="label3">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
-                    <property name="label" translatable="yes">Text color</property>
+                    <property name="margin_left">6</property>
+                    <property name="margin_right">6</property>
+                    <property name="xalign">0</property>
+                    <property name="label" translatable="yes">Text color:</property>
                   </object>
                   <packing>
                     <property name="left_attach">0</property>
@@ -903,7 +964,10 @@ Dates are special because they can be formatted in many ways and so for a date y
                   <object class="GtkLabel" id="label4">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
-                    <property name="label" translatable="yes">Border color</property>
+                    <property name="margin_left">6</property>
+                    <property name="margin_right">6</property>
+                    <property name="xalign">0</property>
+                    <property name="label" translatable="yes">Border color:</property>
                   </object>
                   <packing>
                     <property name="left_attach">0</property>
@@ -916,7 +980,10 @@ Dates are special because they can be formatted in many ways and so for a date y
                   <object class="GtkLabel" id="label5">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
-                    <property name="label" translatable="yes">Border thickness</property>
+                    <property name="margin_left">6</property>
+                    <property name="margin_right">6</property>
+                    <property name="xalign">0</property>
+                    <property name="label" translatable="yes">Border thickness:</property>
                   </object>
                   <packing>
                     <property name="left_attach">0</property>
@@ -929,7 +996,10 @@ Dates are special because they can be formatted in many ways and so for a date y
                   <object class="GtkLabel" id="label6">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
-                    <property name="label" translatable="yes">Font</property>
+                    <property name="margin_left">6</property>
+                    <property name="margin_right">6</property>
+                    <property name="xalign">0</property>
+                    <property name="label" translatable="yes">Font:</property>
                   </object>
                   <packing>
                     <property name="left_attach">0</property>
@@ -943,6 +1013,8 @@ Dates are special because they can be formatted in many ways and so for a date y
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
+                    <property name="margin_left">6</property>
+                    <property name="margin_right">6</property>
                     <property name="font">Sans 12</property>
                     <property name="preview_text">2014-31-06</property>
                     <property name="show_size">False</property>
@@ -958,7 +1030,10 @@ Dates are special because they can be formatted in many ways and so for a date y
                   <object class="GtkLabel" id="label14">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
-                    <property name="label" translatable="yes">Background color</property>
+                    <property name="margin_left">6</property>
+                    <property name="margin_right">6</property>
+                    <property name="xalign">0</property>
+                    <property name="label" translatable="yes">Background color:</property>
                   </object>
                   <packing>
                     <property name="left_attach">0</property>
@@ -971,7 +1046,10 @@ Dates are special because they can be formatted in many ways and so for a date y
                   <object class="GtkLabel" id="label15">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
-                    <property name="label" translatable="yes">Background border radius</property>
+                    <property name="margin_left">6</property>
+                    <property name="margin_right">6</property>
+                    <property name="xalign">0</property>
+                    <property name="label" translatable="yes">Background border radius:</property>
                   </object>
                   <packing>
                     <property name="left_attach">0</property>
@@ -985,6 +1063,8 @@ Dates are special because they can be formatted in many ways and so for a date y
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
+                    <property name="margin_left">6</property>
+                    <property name="margin_right">6</property>
                     <property name="use_alpha">True</property>
                   </object>
                   <packing>
@@ -998,6 +1078,8 @@ Dates are special because they can be formatted in many ways and so for a date y
                   <object class="GtkScale" id="backBorderRadiusScale">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
+                    <property name="margin_left">6</property>
+                    <property name="margin_right">6</property>
                     <property name="round_digits">1</property>
                   </object>
                   <packing>
