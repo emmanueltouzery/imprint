@@ -93,7 +93,7 @@ data EnvironmentInfo = EnvironmentInfo
 
 getFormatElementValue :: ImageInfo -> EnvironmentInfo -> FormatElement -> String
 getFormatElementValue imageInfo envInfo format
-	| format == Filename = dropExtension $ snd $ splitFileName $ imgFullPath imageInfo -- TODO drop the extension
+	| format == Filename = dropExtension $ snd $ splitFileName $ imgFullPath imageInfo
 	| format == Folderhierarchy =
 		case () of _
 				| picturesFolder `isPrefixOf` folderPath -> drop (length picturesFolder) folderPath

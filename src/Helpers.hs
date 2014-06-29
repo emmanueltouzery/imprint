@@ -74,7 +74,6 @@ getBuilderHolder builder = do
 -- connect the new one, otherwise the old handler
 -- also gets invoked. To disconnect I need the
 -- connection ID, that I must store...
--- TODO move to this pattern in more places
 builderHolderGetButtonBinder :: BuilderHolder -> String -> IO ButtonBinder
 builderHolderGetButtonBinder builderHolder btnName = do
 	bindersV <- readIORef $ buttonBinders builderHolder

@@ -100,5 +100,3 @@ readSettings = AppSettings.readSettings (AutoFromAppName appName)
 
 saveSettings :: Conf -> IO ()
 saveSettings = AppSettings.saveSettings getAllSettings (AutoFromAppName appName)
-
--- TODO besides font name also add the date format string

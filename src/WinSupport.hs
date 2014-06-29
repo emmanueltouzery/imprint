@@ -6,7 +6,6 @@ import System.Environment (getExecutablePath)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Control.Monad (unless, void, liftM)
---import System.Win32.Types
 import Foreign.C.Types
 import Foreign.C.String
 import GHC.Windows
@@ -31,9 +30,9 @@ setupGetTextWindows = do
 		putEnv "OUTPUT_CHARSET=utf8"
 		setEnv_ "LANG" localeStr --"fr_FR.UTF8"
 		putEnv $ "LANG=" ++ localeStr -- fr_FR.UTF8"
-	-- TODO because I hardcode ./po will only work
-	-- when started from the right folder...
-	bindTextDomain "imprint" (Just "po")
+	
+	translationsFolder <- getDataFileName "po"
+	bindTextDomain "imprint" (Just translationsFolder)
 	textDomain $ Just "imprint"
 	return ()
 
@@ -54,7 +53,8 @@ localesMap = Map.fromList [
 	(8204, "fr_FR.UTF8"),
 	(10252, "fr_FR.UTF8"),
 	(4108, "fr_FR.UTF8"),
-	(7180, "fr_FR.UTF8")]
+	(7180, "fr_FR.UTF8"),
+	(1060, "sl_SI.UTF8")]
 
 -- http://msdn.microsoft.com/en-us/goglobal/bb964664.aspx
 foreign import stdcall unsafe "GetUserDefaultUILanguage"
@@ -70,14 +70,5 @@ putEnv v = void (withCString v $ \vv -> c_putenv vv)
  
 foreign import stdcall unsafe "windows.h SetEnvironmentVariableA" 
   c_SetEnvironmentVariable :: CString -> CString -> IO Bool 
--- #ifdef CABAL_OS_WINDOWS
--- SetEnv_ :: String -> String -> IO () 
--- SetEnv_ key value = withCWString key $ \k -> withCWString value $ \v -> do 
---   success <- c_SetEnvironmentVariable k v 
---   unless success (throwGetLastError "setEnv") 
---  
--- Foreign import stdcall unsafe "windows.h SetEnvironmentVariableW" 
---   c_SetEnvironmentVariable :: LPTSTR -> LPTSTR -> IO Bool 
--- #endif
 
 foreign import ccall unsafe "putenv" c_putenv :: CString -> IO CInt 
