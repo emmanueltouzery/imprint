@@ -16,6 +16,8 @@ And it is possible to place several display items on a single picture, top-left,
 
 ![Style editor](https://raw.github.com/wiki/emmanueltouzery/imprint/items_editor.png)
 
+Besides English, Imprint is also translated in French and Slovenian languages.
+
 To install the application on linux, install the haskell platform, get this git repository and run:
 
 	cabal install

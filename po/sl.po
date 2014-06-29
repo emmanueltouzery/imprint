@@ -26,42 +26,42 @@ msgstr ""
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
-"Language: \n"
+"Language: sl\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
 #: src/SettingsDialog.hs:0
 msgid "Advanced"
-msgstr ""
+msgstr "Napredno"
 
 #: src/SettingsDialog.hs:0
 msgid "Are you sure to remove the display item?"
-msgstr ""
+msgstr "Brišem element prikaza?"
 
 #: src/SettingsDialog.hs:0
 msgid "Can't delete the last display item"
-msgstr ""
+msgstr "Ne morem brisati zadnjega elementa prikaza"
 
 #: src/SettingsDialog.hs:0
 msgid "There is no item to display at that position. Create one?"
-msgstr ""
+msgstr "Na tem mestu ni elementa prikaza. Ali naj se ustvari?"
 
 #: imprint.ui:374
 msgid "..."
-msgstr ""
+msgstr "..."
 
 #: imprint.ui:313
 msgid "3:2 - DSLRs and smartphones"
-msgstr ""
+msgstr "3:2 - Zrcalno refleksni aparati in pametni telefoni"
 
 #: imprint.ui:312
 msgid "4:3 - compact cameras"
-msgstr ""
+msgstr "4:3 - kompaktni fotoaparati"
 
 #: imprint.ui:709
 msgid "<big>Drag and drop pictures or folder containing pictures here!</big>"
-msgstr ""
+msgstr "<big>Spustite slike ali mape s slikami sem!</big>"
 
 #: imprint.ui:76
 msgid ""
@@ -79,212 +79,225 @@ msgid ""
 "<u>Examples</u>:\n"
 "* ISO %iso, f/%aper\n"
 "* %date{%H:%M:%S}, ISO %iso</small>"
-msgstr ""
+msgstr "S pomočjo tega okna lahko določite format za prikaz po meri"
+"Program bo posebne sekvence črk nadomestil z dinamičnimi vrednostmi slike"
+" (npr datum).\n"
+"Sekvence črk s začenjajo z '%'. Vtipkajte to črko in prikazalo se bo okno"
+" s seznamom možnosti.\n"
+"\n"
+"Datumi so posebni, ker jih lahko formatiramo na več načinov, torej za datum"
+" najprej napišete %date, nato pa {} sekcija ki določa"
+" način prikaza datuma. Torej začnite z %date{}, nato znotraj {} natipkajte % in"
+" prikazalo se bo okno.\n"
+"\n"
+"<u>Primeri</u>:\n"
+"* ISO %iso, f/%aper\n"
+"* %date{%H:%M:%S}, ISO %iso</small>"
 
 #: imprint.ui:689
 msgid "About"
-msgstr ""
+msgstr "O programu"
 
 #: imprint.ui:1052
 msgid "Background border radius:"
-msgstr ""
+msgstr "Ostrost robov okvira:"
 
 #: imprint.ui:1036
 msgid "Background color:"
-msgstr ""
+msgstr "Barva ozadja:"
 
 #: imprint.ui:970
 msgid "Border color:"
-msgstr ""
+msgstr "Barva roba:"
 
 #: imprint.ui:986
 msgid "Border thickness:"
-msgstr ""
+msgstr "Debelost roba:"
 
 #: imprint.ui:575
 msgid "Bottom center"
-msgstr ""
+msgstr "Spodaj na sredini"
 
 #: imprint.ui:574
 msgid "Bottom left"
-msgstr ""
+msgstr "Spodaj levo"
 
 #: imprint.ui:576
 msgid "Bottom right"
-msgstr ""
+msgstr "Spodaj desno"
 
 #: imprint.ui:347
 msgid "Contents:"
-msgstr ""
+msgstr "Vsebine:"
 
 #: imprint.ui:218
 msgid "Defaults"
-msgstr ""
+msgstr "Privzeto"
 
 #: imprint.ui:1002
 msgid "Font:"
-msgstr ""
+msgstr "Pisava:"
 
 #: imprint.ui:479
 msgid "Horizontal margin:"
-msgstr ""
+msgstr "Horizontalna razdalja od roba"
 
 #: imprint.ui:402
 msgid "Item to edit:"
-msgstr ""
+msgstr "Element za urejanje:"
 
 #: imprint.ui:616
 msgid "Max width:"
-msgstr ""
+msgstr "Maksimalna širina:"
 
 #: imprint.ui:776
 msgid "Open target folder"
-msgstr ""
+msgstr "Odpri mapo"
 
 #: imprint.ui:156
 msgid "Please select a text style"
-msgstr ""
+msgstr "Izberite stil teksta"
 
 #: imprint.ui:296
 msgid "Preview aspect ratio:"
-msgstr ""
+msgstr "Razmerje predogleda:"
 
 #: imprint.ui:674
 msgid "Settings..."
-msgstr ""
+msgstr "Nastavitve..."
 
 #: imprint.ui:434
 msgid "Size:"
-msgstr ""
+msgstr "Velikost:"
 
 #: imprint.ui:954
 msgid "Text color:"
-msgstr ""
+msgstr "Barva teksta:"
 
 #: imprint.ui:418
 msgid "Text style:"
-msgstr ""
+msgstr "Stil teksta:"
 
 #: imprint.ui:572
 msgid "Top center"
-msgstr ""
+msgstr "Zgoraj na sredini"
 
 #: imprint.ui:571
 msgid "Top left"
-msgstr ""
+msgstr "Zgoraj levo"
 
 #: imprint.ui:573
 msgid "Top right"
-msgstr ""
+msgstr "Zgoraj desno"
 
 #: imprint.ui:495
 msgid "Vertical margin:"
-msgstr ""
+msgstr "Vertikalna razdalja od roba"
 
 msgid "File name"
-msgstr ""
+msgstr "Ime datoteke"
 
 msgid "Folder name"
-msgstr ""
+msgstr "Ime mape"
 
 msgid "Folder hierarchy"
-msgstr ""
+msgstr "Pot mape"
 
 msgid "Date"
-msgstr ""
+msgstr "Datum"
 
 msgid "Date and time"
-msgstr ""
+msgstr "Datum in ura"
 
 msgid "Date and time, seconds"
-msgstr ""
+msgstr "Datum in ura, sekunde"
 
 msgid "Exposition time"
-msgstr ""
+msgstr "Osvetlilni čas"
 
 msgid "Aperture"
-msgstr ""
+msgstr "Zaslonka"
 
 msgid "ISO"
-msgstr ""
+msgstr "ISO"
 
 msgid "Exposure bias"
-msgstr ""
+msgstr "Kompenzacija osvetlitve"
 
 msgid "Make"
-msgstr ""
+msgstr "Proizvajalec"
 
 msgid "Model"
-msgstr ""
+msgstr "Model"
 
 msgid "Software"
-msgstr ""
+msgstr "Program"
 
 msgid "Copyright"
-msgstr ""
+msgstr "Avtorske pravice"
 
 msgid "Focal length (35mm)"
-msgstr ""
+msgstr "Goriščna razdalja (35mm)"
 
 msgid "Date formatted in your system language"
-msgstr ""
+msgstr "Datum formatiran v vašem sistemskem jeziku"
 
 msgid "Hours and minutes"
-msgstr ""
+msgstr "Ure in minute"
 
 msgid "Hours, minutes and seconds"
-msgstr ""
+msgstr "Ure, minute in sekunde"
 
 msgid "Hour of the day (24h). 00-23"
-msgstr ""
+msgstr "Ura dneva (24h). 00-23"
 
 msgid "Hour of the day (24h). 0-23"
-msgstr ""
+msgstr "Ura dneva (24h). 0-23"
 
 msgid "Hour of half-day (12h). 01-12"
-msgstr ""
+msgstr "Ura, 12h format. 01-12"
 
 msgid "Hour of half-day (12h). 1-12"
-msgstr ""
+msgstr "Ura 12h format. 1-12"
 
 msgid "Minute of hour, 00-59"
-msgstr ""
+msgstr "Minuta v uri, 00-59"
 
 msgid "Second of minute, 00-60"
-msgstr ""
+msgstr "Sekunda v minuti, 00-60"
 
 msgid "Year"
-msgstr ""
+msgstr "Leto"
 
 msgid "Year of century, 00-99"
-msgstr ""
+msgstr "Leto v stoletju, 00-99"
 
 msgid "Month name, long form, January-December"
-msgstr ""
+msgstr "Ime meseca, daljši način, januar-december"
 
 msgid "Month name, short form, Jan-Dec"
-msgstr ""
+msgstr "Ime meseca, kratek način, jan-dec"
 
 msgid "Month of year, 01-12"
-msgstr ""
+msgstr "Mesec v letu, 01-12"
 
 msgid "Day of month, 01-31"
-msgstr ""
+msgstr "Dan v mesecu, 01-31"
 
 msgid "Day of month, 1-31"
-msgstr ""
+msgstr "Dan v mesecu, 1-31"
 
 msgid "Day of week, short form, Sun-Sat"
-msgstr ""
+msgstr "Dan v tednu, kratek način, pon-ned"
 
 msgid "Day of week, long form, Sunday-Saturday"
-msgstr ""
+msgstr "Dan v tednu, daljši način, ponedeljek-nedelja"
 
 msgid "% sign"
-msgstr ""
+msgstr "% znak"
 
 msgid "<span color='red'><b>Incorrect syntax</b></span>"
-msgstr ""
+msgstr "<span color='red'><b>Neveljavna sintaksa</b></span>"
 
 msgid "Add information about pictures as text painted on the pictures themselves."
-msgstr ""
+msgstr "Dodaj podatke o slikah kot tekst na same slike."
