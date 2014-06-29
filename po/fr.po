@@ -1,0 +1,182 @@
+# #-#-#-#-#  imprint_source.pot (PACKAGE VERSION)  #-#-#-#-#
+# Translation file
+# #-#-#-#-#  imprint_glade.pot (PACKAGE VERSION)  #-#-#-#-#
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#, fuzzy
+msgid ""
+msgstr ""
+"#-#-#-#-#  imprint_source.pot (PACKAGE VERSION)  #-#-#-#-#\n"
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2009-01-13 06:05-0800\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"#-#-#-#-#  imprint_glade.pot (PACKAGE VERSION)  #-#-#-#-#\n"
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2014-06-29 13:31+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: fr\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: src/SettingsDialog.hs:0
+msgid "Advanced"
+msgstr "Avancé"
+
+#: src/SettingsDialog.hs:0
+msgid "Are you sure to remove the display item?"
+msgstr "Êtes-vous sûr de vouloir effacer l'élément?"
+
+#: src/SettingsDialog.hs:0
+msgid "Can't delete the last display item"
+msgstr "Impossible d'effacer le dernier élément"
+
+#: src/SettingsDialog.hs:0
+msgid "There is no item to display at that position. Create one?"
+msgstr "Il n'y pas d'élément a cette position. En créer un?"
+
+#: imprint.ui:374
+msgid "..."
+msgstr "..."
+
+#: imprint.ui:313
+msgid "3:2 - DSLRs and smartphones"
+msgstr "3:2 - Reflex et téléphones"
+
+#: imprint.ui:312
+msgid "4:3 - compact cameras"
+msgstr "4:3 - appareils compact"
+
+#: imprint.ui:709
+msgid "<big>Drag and drop pictures or folder containing pictures here!</big>"
+msgstr "<big>Déposez vos photos ou dossiers contenant des photos ici!</big>"
+
+#: imprint.ui:76
+msgid ""
+"<small>Using this dialog you can specify a custom format for the data to "
+"display. Special placeholders will be replaced by dynamic data from the "
+"picture (for install date and so on).\n"
+"The place holders start with the '%' character. Type that character and a "
+"popup will appear offering you a list.\n"
+"\n"
+"Dates are special because they can be formatted in many ways and so for a "
+"date you first use the %date placeholder but then inside a {} section you "
+"specify how to format the date. Start with %date{} then type '%' in-between "
+"the {} and a popup will guide you.\n"
+"\n"
+"<u>Examples</u>:\n"
+"* ISO %iso, f/%aper\n"
+"* %date{%H:%M:%S}, ISO %iso</small>"
+msgstr ""
+
+#: imprint.ui:689
+msgid "About"
+msgstr "À propos"
+
+#: imprint.ui:1052
+msgid "Background border radius:"
+msgstr ""
+
+#: imprint.ui:1036
+msgid "Background color:"
+msgstr "Couleur d'arrière-plan:"
+
+#: imprint.ui:970
+msgid "Border color:"
+msgstr ""
+
+#: imprint.ui:986
+msgid "Border thickness:"
+msgstr ""
+
+#: imprint.ui:575
+msgid "Bottom center"
+msgstr ""
+
+#: imprint.ui:574
+msgid "Bottom left"
+msgstr ""
+
+#: imprint.ui:576
+msgid "Bottom right"
+msgstr ""
+
+#: imprint.ui:347
+msgid "Contents:"
+msgstr ""
+
+#: imprint.ui:218
+msgid "Defaults"
+msgstr ""
+
+#: imprint.ui:1002
+msgid "Font:"
+msgstr ""
+
+#: imprint.ui:479
+msgid "Horizontal margin:"
+msgstr ""
+
+#: imprint.ui:402
+msgid "Item to edit:"
+msgstr ""
+
+#: imprint.ui:616
+msgid "Max width:"
+msgstr ""
+
+#: imprint.ui:776
+msgid "Open target folder"
+msgstr ""
+
+#: imprint.ui:156
+msgid "Please select a text style"
+msgstr ""
+
+#: imprint.ui:296
+msgid "Preview aspect ratio:"
+msgstr ""
+
+#: imprint.ui:674
+msgid "Settings..."
+msgstr ""
+
+#: imprint.ui:434
+msgid "Size:"
+msgstr ""
+
+#: imprint.ui:954
+msgid "Text color:"
+msgstr ""
+
+#: imprint.ui:418
+msgid "Text style:"
+msgstr ""
+
+#: imprint.ui:572
+msgid "Top center"
+msgstr ""
+
+#: imprint.ui:571
+msgid "Top left"
+msgstr ""
+
+#: imprint.ui:573
+msgid "Top right"
+msgstr ""
+
+#: imprint.ui:495
+msgid "Vertical margin:"
+msgstr ""
