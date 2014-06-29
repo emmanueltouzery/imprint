@@ -398,7 +398,6 @@ Dates are special because they can be formatted in many ways and so for a date y
                     <property name="margin_left">6</property>
                     <property name="margin_right">6</property>
                     <property name="xalign">0</property>
-                    <property name="xpad">5</property>
                     <property name="label" translatable="yes">Item to edit:</property>
                   </object>
                   <packing>
