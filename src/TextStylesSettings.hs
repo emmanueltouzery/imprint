@@ -1,5 +1,5 @@
+{-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
-
 module TextStylesSettings where
 
 import Graphics.Rendering.Cairo hiding (width, height, x)
@@ -10,7 +10,11 @@ import Control.Monad (when, liftM, void)
 import Data.List
 import Control.Lens hiding (set)
 
+#ifdef CABAL_OS_WINDOWS
+import WinSupport (getDataFileName)
+#else
 import Paths_imprint (getDataFileName)
+#endif
 
 import Settings hiding (saveSettings)
 import GtkViewModel

@@ -39,7 +39,11 @@ import GHC.Windows
 import System.Locale.SetLocale (setLocale, Category(LC_ALL))
 #endif
 
+#ifdef CABAL_OS_WINDOWS
+import WinSupport (getDataFileName)
+#else
 import Paths_imprint (getDataFileName)
+#endif
 
 import Settings
 import SettingsDialog
@@ -173,7 +177,7 @@ showMainWindow builder latestConfig = do
 
 showAboutDialog :: Window -> IO ()
 showAboutDialog mainWindow = do
-	logoFname <- getDataFileName "imprint.svg"
+	logoFname <- getDataFileName "imprint-128.png"
 	logoPixbuf <- pixbufNewFromFileAtSize logoFname 128 128
 	aboutDlg <- aboutDialogNew
 	set aboutDlg [aboutDialogProgramName:= "Imprint",
