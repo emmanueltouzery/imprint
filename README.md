@@ -1,8 +1,6 @@
 # IMprint
 
-<div style="float: right">
-    <img src="https://raw.github.com/wiki/emmanueltouzery/imprint/imprint-128.png" alt="app icon"/>
-</div>
+<img align="right" src="https://raw.github.com/wiki/emmanueltouzery/imprint/imprint-128.png" alt="app icon"/>
 
 ![Main view detail](https://raw.github.com/wiki/emmanueltouzery/imprint/main_window.png)
 
