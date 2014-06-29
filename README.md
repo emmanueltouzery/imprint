@@ -1,4 +1,4 @@
-**Im**print
+# IMprint
 
 ![Main view detail](https://raw.github.com/wiki/emmanueltouzery/imprint/main_window.png)
 
