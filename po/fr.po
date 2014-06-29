@@ -161,7 +161,7 @@ msgstr "Choisissez un style de texte"
 
 #: imprint.ui:296
 msgid "Preview aspect ratio:"
-msgstr "Proportions de la preview:"
+msgstr "Proportions de l'aperçu:"
 
 #: imprint.ui:674
 msgid "Settings..."
