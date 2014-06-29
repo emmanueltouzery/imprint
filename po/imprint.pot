@@ -180,3 +180,111 @@ msgstr ""
 #: imprint.ui:495
 msgid "Vertical margin:"
 msgstr ""
+
+msgid "File name"
+msgstr ""
+
+msgid "Folder name"
+msgstr ""
+
+msgid "Folder hierarchy"
+msgstr ""
+
+msgid "Date"
+msgstr ""
+
+msgid "Date and time"
+msgstr ""
+
+msgid "Date and time, seconds"
+msgstr ""
+
+msgid "Exposition time"
+msgstr ""
+
+msgid "Aperture"
+msgstr ""
+
+msgid "ISO"
+msgstr ""
+
+msgid "Exposure bias"
+msgstr ""
+
+msgid "Make"
+msgstr ""
+
+msgid "Model"
+msgstr ""
+
+msgid "Software"
+msgstr ""
+
+msgid "Copyright"
+msgstr ""
+
+msgid "Focal length (35mm)"
+msgstr ""
+
+msgid "Date formatted in your system language"
+msgstr ""
+
+msgid "Hours and minutes"
+msgstr ""
+
+msgid "Hours, minutes and seconds"
+msgstr ""
+
+msgid "Hour of the day (24h). 00-23"
+msgstr ""
+
+msgid "Hour of the day (24h). 0-23"
+msgstr ""
+
+msgid "Hour of half-day (12h). 01-12"
+msgstr ""
+
+msgid "Hour of half-day (12h). 1-12"
+msgstr ""
+
+msgid "Minute of hour, 00-59"
+msgstr ""
+
+msgid "Second of minute, 00-60"
+msgstr ""
+
+msgid "Year"
+msgstr ""
+
+msgid "Year of century, 00-99"
+msgstr ""
+
+msgid "Month name, long form, January-December"
+msgstr ""
+
+msgid "Month name, short form, Jan-Dec"
+msgstr ""
+
+msgid "Month of year, 01-12"
+msgstr ""
+
+msgid "Day of month, 01-31"
+msgstr ""
+
+msgid "Day of month, 1-31"
+msgstr ""
+
+msgid "Day of week, short form, Sun-Sat"
+msgstr ""
+
+msgid "Day of week, long form, Sunday-Saturday"
+msgstr ""
+
+msgid "% sign"
+msgstr ""
+
+msgid "<span color='red'><b>Incorrect syntax</b></span>"
+msgstr ""
+
+msgid "Add information about pictures as text painted on the pictures themselves"
+msgstr ""

@@ -79,7 +79,21 @@ msgid ""
 "<u>Examples</u>:\n"
 "* ISO %iso, f/%aper\n"
 "* %date{%H:%M:%S}, ISO %iso</small>"
-msgstr ""
+msgstr "<small>Ce dialogue vous permet de spécifier un format personnalisé."
+"Des mots-clefs seront remplacés par les données dynamiques de la photo"
+"(par exemple la date etc).\n"
+"Les mots-clefs commencent par le caractère '%'. Tapez ce caractère et"
+"une fenêtre apparaîtra vous offrant une liste des mots-clefs possibles.\n"
+"\n"
+"Les dates sont gérées de manière spéciale parce qu'elles peuvent être"
+"formatées de plusieurs manières et donc vous utilisez le mot-clef %date"
+"mais il y a ensuite une section {} pour le format de date. Tapez"
+"%date{} et tapez un '%' entre les accolades et une fenêtre détaillera"
+"les options.\n"
+"\n"
+"<u>Examples</u>:\n"
+"* ISO %iso, f/%aper\n"
+"* %date{%H:%M:%S}, ISO %iso</small>"
 
 #: imprint.ui:689
 msgid "About"
@@ -87,7 +101,7 @@ msgstr "À propos"
 
 #: imprint.ui:1052
 msgid "Background border radius:"
-msgstr ""
+msgstr "Curvature de l'arrière plan:"
 
 #: imprint.ui:1036
 msgid "Background color:"
@@ -95,88 +109,196 @@ msgstr "Couleur d'arrière-plan:"
 
 #: imprint.ui:970
 msgid "Border color:"
-msgstr ""
+msgstr "Couleur de bordure:"
 
 #: imprint.ui:986
 msgid "Border thickness:"
-msgstr ""
+msgstr "Épaisseur de bordure:"
 
 #: imprint.ui:575
 msgid "Bottom center"
-msgstr ""
+msgstr "En bas au centre"
 
 #: imprint.ui:574
 msgid "Bottom left"
-msgstr ""
+msgstr "En bas à gauche"
 
 #: imprint.ui:576
 msgid "Bottom right"
-msgstr ""
+msgstr "En bas à droite"
 
 #: imprint.ui:347
 msgid "Contents:"
-msgstr ""
+msgstr "Contenu:"
 
 #: imprint.ui:218
 msgid "Defaults"
-msgstr ""
+msgstr "Défauts"
 
 #: imprint.ui:1002
 msgid "Font:"
-msgstr ""
+msgstr "Police:"
 
 #: imprint.ui:479
 msgid "Horizontal margin:"
-msgstr ""
+msgstr "Marge horizontale:"
 
 #: imprint.ui:402
 msgid "Item to edit:"
-msgstr ""
+msgstr "Élement à editer:"
 
 #: imprint.ui:616
 msgid "Max width:"
-msgstr ""
+msgstr "Largeur maximale:"
 
 #: imprint.ui:776
 msgid "Open target folder"
-msgstr ""
+msgstr "Ouvrir le répertoire"
 
 #: imprint.ui:156
 msgid "Please select a text style"
-msgstr ""
+msgstr "Choisissez un style de texte"
 
 #: imprint.ui:296
 msgid "Preview aspect ratio:"
-msgstr ""
+msgstr "Proportions de la preview:"
 
 #: imprint.ui:674
 msgid "Settings..."
-msgstr ""
+msgstr "Options..."
 
 #: imprint.ui:434
 msgid "Size:"
-msgstr ""
+msgstr "Taille:"
 
 #: imprint.ui:954
 msgid "Text color:"
-msgstr ""
+msgstr "Couleur du texte:"
 
 #: imprint.ui:418
 msgid "Text style:"
-msgstr ""
+msgstr "Style du texte:"
 
 #: imprint.ui:572
 msgid "Top center"
-msgstr ""
+msgstr "En haut au centre"
 
 #: imprint.ui:571
 msgid "Top left"
-msgstr ""
+msgstr "En haut à gauche"
 
 #: imprint.ui:573
 msgid "Top right"
-msgstr ""
+msgstr "En haut à droite"
 
 #: imprint.ui:495
 msgid "Vertical margin:"
-msgstr ""
+msgstr "Marge verticale:"
+
+msgid "File name"
+msgstr "Nom de fichier"
+
+msgid "Folder name"
+msgstr "Nom de dossier"
+
+msgid "Folder hierarchy"
+msgstr "Chemin complet du dossier"
+
+msgid "Date"
+msgstr "Date"
+
+msgid "Date and time"
+msgstr "Date et heure"
+
+msgid "Date and time, seconds"
+msgstr "Date, heure et secondes"
+
+msgid "Exposition time"
+msgstr "Temps d'exposition"
+
+msgid "Aperture"
+msgstr "Ouverture"
+
+msgid "ISO"
+msgstr "ISO"
+
+msgid "Exposure bias"
+msgstr "Compensation d'exposition"
+
+msgid "Make"
+msgstr "Fabricant"
+
+msgid "Model"
+msgstr "Modèle"
+
+msgid "Software"
+msgstr "Application"
+
+msgid "Copyright"
+msgstr "Copyright"
+
+msgid "Focal length (35mm)"
+msgstr "Focale (35mm)"
+
+msgid "Date formatted in your system language"
+msgstr "Date formattée dans la langue système"
+
+msgid "Hours and minutes"
+msgstr "Heures et minutes"
+
+msgid "Hours, minutes and seconds"
+msgstr "Heures, minutes et secondes"
+
+msgid "Hour of the day (24h). 00-23"
+msgstr "Heure de la journée (24h). 00-23"
+
+msgid "Hour of the day (24h). 0-23"
+msgstr "Heure de la journée (24h). 0-23"
+
+msgid "Hour of half-day (12h). 01-12"
+msgstr "Heure de la demi-journée (12h). 01-12"
+
+msgid "Hour of half-day (12h). 1-12"
+msgstr "Heure de la demi-journée (12h). 1-12"
+
+msgid "Minute of hour, 00-59"
+msgstr "Minute de l'heure, 00-59"
+
+msgid "Second of minute, 00-60"
+msgstr "Seconde de la minute, 00-60"
+
+msgid "Year"
+msgstr "Année"
+
+msgid "Year of century, 00-99"
+msgstr "Année du siècle, 00-99"
+
+msgid "Month name, long form, January-December"
+msgstr "Nom du mois, forme longue, Janvier-Décembre"
+
+msgid "Month name, short form, Jan-Dec"
+msgstr "Nom du mois, forme courte, Jan-Déc"
+
+msgid "Month of year, 01-12"
+msgstr "Mois de l'année, 01-12"
+
+msgid "Day of month, 01-31"
+msgstr "Jour du mois, 01-31"
+
+msgid "Day of month, 1-31"
+msgstr "Jour du mois, 1-31"
+
+msgid "Day of week, short form, Sun-Sat"
+msgstr "Jour de la semaine, forme courte, Lun-Dim"
+
+msgid "Day of week, long form, Sunday-Saturday"
+msgstr "Jour de la semaine, forme longue, Lundi-Dimanche"
+
+msgid "% sign"
+msgstr "charactère %"
+
+msgid "<span color='red'><b>Incorrect syntax</b></span>"
+msgstr "<span color='red'><b>Syntaxe incorrecte</b></span>"
+
+msgid "Add information about pictures as text painted on the pictures themselves."
+msgstr "Ajoute des informations sur des photos sous forme de texte dessiné sur les photos elles-mêmes."
