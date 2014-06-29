@@ -32,6 +32,7 @@ prepareSettingsDialog builder latestConfig = do
 	imageLayout <- builderGetObject builder castToDrawingArea "image_layout"
 	
 	aspectRatioCombo <- builderGetObject builder castToComboBox "aspect_ratio_combo"
+	comboBoxSetActive aspectRatioCombo 0 -- needed on windows
 	aspectRatioCombo `on` changed $ widgetQueueDraw imageLayout
 
 	defaultSettingsButton <- builderGetObject builder castToButton "default_settings_button"
