@@ -29,9 +29,9 @@ textStyles :: Setting [TextStyle]
 textStyles = ListSetting "textStyles" [
 	TextStyle {
 		styleId = 1,
-		textStroke = (1, 0.5, 0, 1),
-		textFill = (1, 1, 0, 1),
-		strokeHeightRatio = 0.04,
+		textStroke = (0, 0, 0, 1),
+		textFill = (0.95, 0.47, 0, 1),
+		strokeHeightRatio = 0.025,
 		fontName = Nothing,
 		backColor = (0, 0, 0, 0),
 		backBorderRadiusHeightRatio = 0
@@ -82,9 +82,9 @@ displayItems :: Setting [DisplayItem]
 displayItems = ListSetting "displayItems" [
 	DisplayItem {
 		textStyleId = 1,
-		textSizeFromWidth = 0.04,
-		marginXFromWidth = 0.025,
-		marginYFromWidth = 0.025,
+		textSizeFromWidth = 0.025,
+		marginXFromWidth = 0.05,
+		marginYFromWidth = 0.05,
 		position = BottomRight,
 		itemContents = "%date{%x}",
 		maxWidthFromWidth = 0.35
