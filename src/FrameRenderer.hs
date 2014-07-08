@@ -21,6 +21,7 @@ import System.FilePath.Windows (splitFileName, pathSeparator, takeDirectory, dro
 #else
 import System.FilePath.Posix (splitFileName, pathSeparator, takeDirectory, dropExtension)
 #endif
+import Control.Applicative ( (<$>), (*>) )
 
 import Settings
 import Helpers
@@ -48,15 +49,10 @@ parseFormatElement :: GenParser Char st FormatElement
 parseFormatElement = try parseDate <|> try parseEscapedPercent <|> try parseFormatItem <|> parseString
 
 parseDate :: GenParser Char st FormatElement
-parseDate = do
-	string "%date{"
-	dateFormat <- manyTill anyChar $ try $ char '}'
-	return $ DateFormat dateFormat
+parseDate = DateFormat <$> (string "%date{" *> manyTill anyChar (try $ char '}'))
 
 parseEscapedPercent :: GenParser Char st FormatElement
-parseEscapedPercent = do
-	string "%%"
-	return $ StringContents "%"
+parseEscapedPercent = string "%%" >> return (StringContents "%")
 
 parseFormatItem :: GenParser Char st FormatElement
 parseFormatItem = do
@@ -76,9 +72,7 @@ parseFormatItem = do
 		<?> "known format item"
 	
 parseString :: GenParser Char st FormatElement
-parseString = do
-	contents <- many1 $ noneOf "%"
-	return $ StringContents contents
+parseString = StringContents <$> many1 (noneOf "%")
 
 data ImageInfo = ImageInfo
 	{
