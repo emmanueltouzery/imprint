@@ -26,4 +26,6 @@ To install the application on linux, install the haskell platform, get this git 
 
 The application will register in the menus on linux, however for it to actually run, you must add ~/.cabal/bin to your path.
 
-Compilation on windows is extremely messy, for that reason just download the pre-made package and unzip it anywhere on your disk and run the .exe.
+Unfortunately as of now the application does not work correctly on windows due to [a gtk2hs bug][]. To make it build on windows also I had to make a version of hgettext which doesn't depend on setlocale, which is posix-only. I just commented everything setlocale in hgettext. If/when the gtk2hs bug is fixed and I can publish a windows version I'll publish that hgettext fork too.
+
+[a gtk2hs bug]: https://github.com/gtk2hs/gtk2hs/issues/33
