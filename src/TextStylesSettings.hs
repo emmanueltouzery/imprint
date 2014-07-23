@@ -6,7 +6,8 @@ import Graphics.Rendering.Cairo hiding (width, height, x)
 import Graphics.Rendering.Cairo.SVG
 import Graphics.UI.Gtk hiding (styleSet)
 import Data.Maybe (fromJust)
-import Control.Monad (when, liftM, void)
+import Control.Monad (when, void)
+import Control.Applicative
 import Data.List
 import Control.Lens hiding (set)
 
@@ -111,7 +112,7 @@ vboxAddStyleItem parent box ctxt activeItemSvg textStyleDialogInfo displayItemsM
 
 	let styleSelectCb = liftIO $ do
 		cTextStyle <- readModel curStyleModel
-		curDisplayItemModel <- liftM fromJust $ listModelGetCurrentItem displayItemsModel
+		curDisplayItemModel <- fromJust <$> listModelGetCurrentItem displayItemsModel
 		modifyModel curDisplayItemModel $ \i -> i { textStyleId = styleId cTextStyle }
 		listModelSetCurrentItem textStylesModel curStyleModel
 		widgetQueueDraw box -- TODO maybe through listeners?
@@ -160,7 +161,7 @@ drawTextStylePreview drawingArea ctxt text curStyleModel = do
 
 removeTextStyle :: Dialog -> Box -> ListModel TextStyle -> ListModel DisplayItem -> Model TextStyle -> IO ()
 removeTextStyle parent box textStylesModel displayItemsModel textStyleModel = do
-	styleIdToRemove <- liftM styleId $ readModel textStyleModel
+	styleIdToRemove <- styleId <$> readModel textStyleModel
 	displayItemsV <- readListModel displayItemsModel >>= mapM readModel
 	let usedTextStyleIds = fmap textStyleId displayItemsV
 	if styleIdToRemove `elem` usedTextStyleIds
@@ -273,11 +274,11 @@ setFontSizeForBoundingBox ctxt text fontSize maxWidth maxHeight textStyle = do
 		Just name -> fontDescriptionFromString name
 	liftIO $ fontDescriptionSetSize fnt $ fromIntegral fontSize
 	layoutSetFontDescription text $ Just fnt
-	(Rectangle _ _ rWidth rHeight) <- liftM snd $ layoutGetPixelExtents text
+	(Rectangle _ _ rWidth rHeight) <- snd <$> layoutGetPixelExtents text
 	if rWidth < maxWidth && rHeight < maxHeight
 		then setFontSizeForBoundingBox ctxt text (fontSize+1) maxWidth maxHeight textStyle
 		else do
-			layoutFnt <- liftM fromJust $ layoutGetFontDescription text
+			layoutFnt <- fromJust <$> layoutGetFontDescription text
 			fontDescriptionSetSize layoutFnt $ fromIntegral $ fontSize-1
 			layoutSetFontDescription text $ Just layoutFnt
 			return $ fontSize-1

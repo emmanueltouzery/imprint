@@ -6,6 +6,7 @@ import Graphics.Rendering.Cairo hiding (width, height, x)
 import Data.IORef
 import Data.AppSettings (getSetting', setSetting, Conf, DefaultConfig(..))
 import Control.Monad (liftM, when, void)
+import Control.Applicative
 import Data.Maybe (fromJust, isNothing)
 import Data.List
 import qualified Data.Map as Map
@@ -26,7 +27,7 @@ prepareSettingsDialog builder latestConfig = do
 	displayItemsModel <- makeListModel $ getSetting' startConf displayItems
 	textStylesModel <- makeListModel $ getSetting' startConf textStyles
 
-	let getCurItem = liftM fromJust $ listModelGetCurrentItem displayItemsModel
+	let getCurItem = fromJust <$> listModelGetCurrentItem displayItemsModel
 
 	settingsDialog <- builderGetObject builder castToDialog "main_settings_dialog"
 	imageLayout <- builderGetObject builder castToDrawingArea "image_layout"
@@ -150,7 +151,7 @@ prepareSettingsDialog builder latestConfig = do
 
 	readListModel displayItemsModel >>= listModelSetCurrentItem displayItemsModel . head
 
-	liftM position (getCurItem >>= readModel) >>= comboBoxSelectPosition displayItemPositionCombo
+	position <$> (getCurItem >>= readModel) >>= comboBoxSelectPosition displayItemPositionCombo
 	displayItemPositionCombo `on` changed $
 		changeDisplayItemPosition settingsDialog displayItemPositionCombo displayItemsModel
 
@@ -172,13 +173,13 @@ handlePositionDelete :: Dialog -> ListModel DisplayItem -> ComboBox -> IO ()
 handlePositionDelete settingsDialog displayItemsModel displayItemPositionCombo = do
 	confirm <- dialogYesNo settingsDialog $ __ "Are you sure to remove the display item?"
 	when confirm $ do
-		itemToRemove <- liftM fromJust $ listModelGetCurrentItem displayItemsModel 
-		newCurItem <- liftM (find (/= itemToRemove)) $ readListModel displayItemsModel
+		itemToRemove <- fromJust <$> listModelGetCurrentItem displayItemsModel 
+		newCurItem <- find (/= itemToRemove) <$> readListModel displayItemsModel
 		case newCurItem of
 			Nothing -> displayError settingsDialog $ __ "Can't delete the last display item"
 			Just newItem -> do
 				listModelSetCurrentItem displayItemsModel newItem
-				newPos <- liftM position $ readModel newItem
+				newPos <- position <$> readModel newItem
 				comboBoxSelectPosition displayItemPositionCombo newPos
 				listModelRemoveItem displayItemsModel itemToRemove
 
@@ -256,8 +257,8 @@ drawImageLayout drawingArea aspectRatioCombo displayItemsModel textStylesModel t
 	heightMultiplier <- liftIO $ getHeightMultiplier aspectRatioCombo
 
 	-- draw image borders...
-	w <- liftIO $ liftM fromIntegral $ widgetGetAllocatedWidth drawingArea
-	h <- liftIO $ liftM fromIntegral $ widgetGetAllocatedHeight drawingArea
+	w <- liftIO $ fromIntegral <$> widgetGetAllocatedWidth drawingArea
+	h <- liftIO $ fromIntegral <$> widgetGetAllocatedHeight drawingArea
 
 	let (effectiveW, effectiveH) = if w*heightMultiplier < h
 		then (w, w*heightMultiplier)
@@ -307,7 +308,7 @@ addOrOverwriteAll listModel getKey defaultList = do
 
 -- TODO must be able to make this look nicer...?
 makeHashByKey :: Ord b => (a -> b) -> [Model a] -> IO (Map.Map b (Model a))
-makeHashByKey getKey = liftM Map.fromList . mapM (\x -> liftM (flip (,) x . getKey) (readModel x))
+makeHashByKey getKey = liftM Map.fromList . mapM (\x -> flip (,) x . getKey <$> readModel x)
 
 addOrOverwrite :: Ord b => ListModel a -> Map.Map b (Model a) -> (a -> b) -> a -> IO ()
 addOrOverwrite listModel modelItemsByKey getKey newItem =

@@ -7,7 +7,7 @@ import Graphics.Rendering.Cairo hiding (width, height, x)
 import Graphics.UI.Gtk hiding (styleSet)
 import Graphics.HsExif
 import Data.IORef
-import Control.Monad (liftM, void, when)
+import Control.Monad (void, when)
 import Data.List
 import Data.Maybe (fromJust)
 import Data.AppSettings
@@ -64,7 +64,7 @@ main = do
 	-- Therefore it's a special situation because
 	-- the settings can change anytime.
 	-- in the rest of the app however they'll be static.
-	settings <- liftM fst Settings.readSettings
+	settings <- fst <$> Settings.readSettings
 
 	-- ############ TODO I think i don't need to hold the config in an IORef
 	-- now. I want realtime edit when previewing changes in the OK/Cancel dialog.
@@ -202,9 +202,9 @@ expandFilenames [] = return []
 expandFilenames (x:xs) = do
 	isDir <- doesDirectoryExist x 
 	if not isDir
-		then liftM (x:) $ expandFilenames xs
+		then (x:) <$> expandFilenames xs
 		else do
-			filesInDir <- liftM (filter (`notElem` [".", ".."])) $ getDirectoryContents x
+			filesInDir <- filter (`notElem` [".", ".."]) <$> getDirectoryContents x
 			let filesInDirFullPath = map (\f -> x ++ [pathSeparator] ++ f) filesInDir
 			(++) <$> expandFilenames filesInDirFullPath <*> expandFilenames xs
 

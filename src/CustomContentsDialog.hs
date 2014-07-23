@@ -4,7 +4,7 @@ module CustomContentsDialog where
 
 import Data.Maybe (isJust, fromJust)
 import Data.List
-import Control.Monad (liftM)
+import Control.Applicative
 import Graphics.UI.Gtk
 import Control.Lens hiding (set)
 
@@ -61,7 +61,7 @@ showCustomContentsDialog parent builderHolder displayItemModel = do
 	let builder = boundBuilder builderHolder
 	dialog <- builderGetObject builder castToDialog "customContentsDialog"
 	customContentsEntry <- builderGetObject builder castToEntry "customContentsEntry"
-	curContents <- liftM itemContents $ readModel displayItemModel
+	curContents <- itemContents <$> readModel displayItemModel
 
 	okBtnBinder <- builderHolderGetButtonBinder builderHolder "customContentsOK"
 	let okBtn = boundButton okBtnBinder
@@ -102,7 +102,7 @@ showCustomContentsDialog parent builderHolder displayItemModel = do
 		textSoFar <- entryGetText customContentsEntry
 		cursorPosBefore <- get customContentsEntry entryCursorPosition
 		let (beforeCursor, afterCursor) = splitAt cursorPosBefore textSoFar
-		textWhichGotCompleted <- liftM fromJust $ textBeforeCursorFromSymbol "%" customContentsEntry
+		textWhichGotCompleted <- fromJust <$> textBeforeCursorFromSymbol "%" customContentsEntry
 		let lengthBeforeCompletion = length beforeCursor - length textWhichGotCompleted
 		let newText = take lengthBeforeCompletion textSoFar
 			++ complRecordValue candidate ++ afterCursor
@@ -122,7 +122,7 @@ showCustomContentsDialog parent builderHolder displayItemModel = do
 textBeforeCursorFromSymbol :: String -> Entry -> IO (Maybe String)
 textBeforeCursorFromSymbol symbol entry = do
 	cursorPos <- get entry entryCursorPosition
-	typed <- liftM (take cursorPos) $ entryGetText entry
+	typed <- take cursorPos <$> entryGetText entry
 	return $ find (isPrefixOf symbol) $ tail $ reverse $ tails typed
 
 customContentsCompletionCb :: [CompletionRecord] -> Entry -> String -> TreeIter -> IO Bool

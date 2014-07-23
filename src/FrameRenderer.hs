@@ -6,7 +6,6 @@ module FrameRenderer (renderFrame, renderText, parseFormat,
 
 import Graphics.UI.Gtk
 import Graphics.Rendering.Cairo hiding (width, height, x, y)
-import Control.Monad (liftM)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.List
@@ -97,8 +96,7 @@ getFormatElementValue imageInfo envInfo format
 	| (ExifContents tag) <- format = maybe (__ "No data")
 		(showFunction tag) $ Map.lookup tag exifTags
 	| (DateFormat dateFmt) <- format = fromMaybe (__ "No data")
-		$ liftM (formatTime defaultTimeLocale dateFmt)
-		$ getDateTimeOriginal exifTags
+		$ formatTime defaultTimeLocale dateFmt <$> getDateTimeOriginal exifTags
 	| (StringContents str) <- format = str
 	| otherwise = error "Unmatched parameters for getFormatElementValue"
 	where
@@ -138,7 +136,7 @@ renderDisplayItem width height imageInfo text ctxt displayItem textStyle = do
 	-- renderText will also set the font, but I must do it
 	-- before already to get the right font metrics...
 	liftIO $ updateFontFromTextStyle ctxt text textStyle textSizePoints
-	(Rectangle _ _ rWidth rHeight) <- liftM snd $ liftIO (layoutGetPixelExtents text)
+	(Rectangle _ _ rWidth rHeight) <- snd <$> liftIO (layoutGetPixelExtents text)
 	let xLeft = fromIntegral marginX
 	let xCenter = fromIntegral $ (width `div` 2) - (rWidth `div` 2)
 	let xRight = fromIntegral $ width - rWidth - marginX
@@ -157,7 +155,7 @@ renderDisplayItem width height imageInfo text ctxt displayItem textStyle = do
 renderText :: PangoLayout -> PangoContext -> TextStyle -> Double -> Render ()
 renderText text ctxt textStyle fontSize = do
 	liftIO $ updateFontFromTextStyle ctxt text textStyle fontSize
-	(Rectangle rX rY rWidth rHeight) <- liftM snd $ liftIO (layoutGetPixelExtents text)
+	(Rectangle rX rY rWidth rHeight) <- snd <$> liftIO (layoutGetPixelExtents text)
 
 	(curX, curY) <- getCurrentPoint
 	roundedRect (backBorderRadiusHeightRatio textStyle * fromIntegral rHeight)

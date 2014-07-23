@@ -27,7 +27,8 @@ module GtkViewModel (
 import Data.IORef
 import Control.Lens
 import Graphics.UI.Gtk
-import Control.Monad (liftM, when, void)
+import Control.Monad (when, void)
+import Control.Applicative ( (<$>) )
 import Data.List
 import Data.Maybe (fromMaybe)
 
@@ -181,7 +182,7 @@ instance (RangeClass a) => Bindable (RangeBindInfo a) Double where
 		adjustmentSetValue adj $ v*100
 	registerWidgetListener w cb = void (do
 		adj <- rangeGetAdjustment $ range w
-		onValueChanged adj $ liftM (/100) (adjustmentGetValue adj) >>= cb)
+		onValueChanged adj $ (/100) <$> (adjustmentGetValue adj) >>= cb)
 
 -- for the combo bind info, you can give a defaultIndex, which will
 -- be used in case the model is set to a value which is not contained

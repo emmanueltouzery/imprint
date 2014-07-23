@@ -5,7 +5,7 @@ import System.FilePath.Windows (splitFileName)
 import System.Environment (getExecutablePath)
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Control.Monad (unless, void, liftM)
+import Control.Monad (unless, void)
 import Foreign.C.Types
 import Foreign.C.String
 import GHC.Windows
@@ -15,7 +15,7 @@ import Helpers
 
 getDataFileName :: String -> IO String
 getDataFileName fname = do
-	appFolder <- liftM (fst . splitFileName) getExecutablePath
+	appFolder <- fst . splitFileName <$> getExecutablePath
 	return $ appFolder ++ fname
 
 setupGetTextWindows :: IO ()
@@ -24,7 +24,7 @@ setupGetTextWindows = do
 	-- gettext checks $LANG but it's not what windows uses...
 	-- find out the language from windows and write the
 	-- $LANG so that the app starts in the correct language...
-	winLang <- liftM fromIntegral getUserDefaultUILanguage
+	winLang <- fromIntegral <$> getUserDefaultUILanguage
 	let locale = Map.lookup winLang localesMap
 	whenIsJust locale $ \localeStr -> do
 		putEnv "OUTPUT_CHARSET=utf8"
