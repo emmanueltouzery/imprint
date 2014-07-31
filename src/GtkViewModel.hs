@@ -112,9 +112,7 @@ listModelFind :: (a -> Bool) -> ListModel a -> IO (Maybe (Model a))
 listModelFind cb listModel = do
 	list <- readIORef (items listModel)
 	curList <- mapM readModel list
-	return $ do
-		idx <- findIndex cb curList
-		return $ list !! idx
+	return $ (!!) list <$> findIndex cb curList
 
 listModelSetCurrentItem :: ListModel a -> Model a -> IO ()
 listModelSetCurrentItem listModel item = do
