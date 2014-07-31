@@ -87,11 +87,7 @@ data EnvironmentInfo = EnvironmentInfo
 getFormatElementValue :: ImageInfo -> EnvironmentInfo -> FormatElement -> String
 getFormatElementValue imageInfo envInfo format
 	| format == Filename = dropExtension $ snd $ splitFileName $ imgFullPath imageInfo
-	| format == Folderhierarchy =
-		case () of _
-				| picturesFolder `isPrefixOf` folderPath -> drop (length picturesFolder) folderPath
-				| homeDir `isPrefixOf` folderPath -> drop (length homeDir+1) folderPath
-				| otherwise -> folderPath
+	| format == Folderhierarchy = getFormatFolderHierarchy imageInfo envInfo
 	| format == Foldername = snd $ splitFileName $ takeDirectory $ fst $ splitFileName $ imgFullPath imageInfo
 	| (ExifContents tag) <- format = maybe (__ "No data")
 		(showFunction tag) $ Map.lookup tag exifTags
@@ -100,13 +96,20 @@ getFormatElementValue imageInfo envInfo format
 	| (StringContents str) <- format = str
 	| otherwise = error "Unmatched parameters for getFormatElementValue"
 	where
-		folderPath = fst $ splitFileName $ imgFullPath imageInfo
-		picturesFolder = homeDir ++ [pathSeparator] ++ "Pictures"
-		homeDir = userHomeDirectory envInfo
 		exifTags = imgExifTags imageInfo
 		showFunction tag
 			| tag `elem` [fnumber, exposureBiasValue] = formatAsFloatingPoint 2
 			| otherwise = show
+
+getFormatFolderHierarchy :: ImageInfo -> EnvironmentInfo -> String
+getFormatFolderHierarchy imageInfo envInfo
+	| picturesFolder `isPrefixOf` folderPath = drop (length picturesFolder) folderPath
+	| homeDir `isPrefixOf` folderPath = drop (length homeDir+1) folderPath
+	| otherwise = folderPath
+	where
+		folderPath = fst $ splitFileName $ imgFullPath imageInfo
+		picturesFolder = homeDir ++ [pathSeparator] ++ "Pictures"
+		homeDir = userHomeDirectory envInfo
 
 getTextToRender :: DisplayItem -> ImageInfo -> EnvironmentInfo -> String
 getTextToRender displayItem imageInfo envInfo =
