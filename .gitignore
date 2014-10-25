@@ -1,1 +1,7 @@
 dist
+*.o
+*.a
+*.lib
+*.exe
+*.dll
+*.def
