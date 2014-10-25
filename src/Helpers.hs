@@ -14,12 +14,19 @@ import System.FilePath.Posix (splitFileName, splitPath, takeDirectory)
 import qualified Data.Function as F (on)
 import Data.List
 import Control.Monad (when)
+import Language.Haskell.TH
+import Control.Lens hiding (set)
 
 import Text.I18N.GetText (getText)
 import System.IO.Unsafe (unsafePerformIO)
 
 __ :: String -> String
 __ = unsafePerformIO . getText
+
+-- http://stackoverflow.com/questions/17132514/
+myMakeLenses :: Name -> DecsQ
+myMakeLenses = makeLensesWith $ lensRules
+	& lensField .~ \_ name -> [TopName (mkName $ nameBase name ++ "L")]
 
 applyColor :: (Double->Double->Double->Double->a) -> (Double,Double,Double,Double) -> a
 applyColor f (r,g,b,a) = f r g b a

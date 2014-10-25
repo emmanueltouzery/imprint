@@ -36,7 +36,7 @@ executable imprint
                        containers >= 0.5,
                        mtl >= 2.1,
                        app-settings >= 0.2.0.2,
-                       lens == 4.1.*,
+                       lens >= 4.4,
                        parsec >= 3.1,
                        old-locale >= 1.0,
                        filepath >= 1.3,
@@ -49,7 +49,8 @@ executable imprint
                        -- for windows I made myself a hgettext which doesn't depend on setlocale
                        -- and I use that one...
                        hgettext >= 0.1.5,
-                       text
+                       text,
+                       template-haskell
 
   if !os(windows)
     build-depends:     setlocale == 0.0.*
@@ -72,7 +73,7 @@ test-suite        tests
                        gtk3 >= 0.13,
                        cairo >= 0.13,
                        svgcairo >= 0.12,
-                       lens == 4.1.*,
+                       lens >= 4.4,
                        app-settings >= 0.2.0.2,
                        parsec >= 3.1,
                        hsexif >= 0.5,
@@ -85,7 +86,8 @@ test-suite        tests
                        gio >= 0.13,
                        utf8-string >= 0.3,
                        hgettext >= 0.1.5,
-                       text
+                       text,
+                       template-haskell
 
   default-language:    Haskell2010
   Ghc-Options:         -Wall

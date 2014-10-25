@@ -4,6 +4,7 @@ module Settings where
 
 import Data.AppSettings as AppSettings
 import Control.Lens hiding (Setting, setting)
+import Helpers (myMakeLenses)
 
 appName :: String
 appName = "imprint"
@@ -20,10 +21,7 @@ data TextStyle = TextStyle
 		backColor :: ColorRgba,
 		backBorderRadiusHeightRatio :: Double
 	} deriving (Show, Read, Eq)
--- http://stackoverflow.com/questions/17132514/
-makeLensesWith ?? ''TextStyle $ lensRules
-  & lensField .~ (\name -> Just (name ++ "L"))
-
+myMakeLenses ''TextStyle
 
 textStyles :: Setting [TextStyle]
 textStyles = ListSetting "textStyles" [
@@ -74,9 +72,7 @@ data DisplayItem = DisplayItem
 		maxWidthFromWidth :: Double
 	} deriving (Show, Read, Eq)
 --
--- http://stackoverflow.com/questions/17132514/
-makeLensesWith ?? ''DisplayItem $ lensRules
-  & lensField .~ (\name -> Just (name ++ "L"))
+myMakeLenses ''DisplayItem
 
 displayItems :: Setting [DisplayItem]
 displayItems = ListSetting "displayItems" [
