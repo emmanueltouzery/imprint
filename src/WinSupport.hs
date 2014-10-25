@@ -10,6 +10,7 @@ import Foreign.C.Types
 import Foreign.C.String
 import GHC.Windows
 import Text.I18N.GetText
+import Control.Applicative
 
 import Helpers
 
