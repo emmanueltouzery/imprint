@@ -5,3 +5,5 @@ dist
 *.exe
 *.dll
 *.def
+.cabal-sandbox/
+cabal.sandbox.config
