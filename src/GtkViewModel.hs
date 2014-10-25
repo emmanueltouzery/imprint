@@ -31,6 +31,7 @@ import Control.Monad (when, void)
 import Control.Applicative ( (<$>) )
 import Data.List
 import Data.Maybe (fromMaybe)
+import qualified Data.Text as T
 
 import Helpers
 import Settings (ColorRgba)
@@ -213,8 +214,8 @@ instance (ComboBoxClass a, Eq b) => Bindable (ComboBindInfo a b) b where
 		connectId <- readIORef connectIdRef
 		whenIsJust connectId signalDisconnect
 		comboBoxSetModelText combo
-		mapM_ (comboBoxAppendText combo . fst) values
-		mapM_ (comboBoxAppendText combo) extraValues
+		mapM_ (comboBoxAppendText combo . T.pack . fst) values
+		mapM_ (comboBoxAppendText combo . T.pack) extraValues
 	setWidgetValue (ComboBindInfo combo values _ defaultIdx _) curValue = do
 		let idx = fromMaybe defaultIdx $ findIndex ((==curValue) . snd) values
 		comboBoxSetActive combo idx

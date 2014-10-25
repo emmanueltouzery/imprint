@@ -14,6 +14,7 @@ import Data.AppSettings
 import Control.Concurrent (forkOS)
 import Text.Printf (printf)
 import qualified Data.Map as Map (empty)
+import qualified Data.Text as T
 #ifdef CABAL_OS_WINDOWS
 import System.FilePath.Windows (splitFileName, pathSeparator)
 #else
@@ -154,7 +155,7 @@ processDrop builderHolder latestConfig mainWindow uris = do
 	buttonBindCallback progressOpenTargetFolder $ openFolder targetFolder
 
 	let pictureConvertCb = \fileIdx successInfo -> postGUIAsync $ do
-		labelSetText progressLabel $ printf "Processing image %d/%d" fileIdx filesCount
+		labelSetText progressLabel $ T.pack $ printf "Processing image %d/%d" fileIdx filesCount
 		progressBarSetFraction progressBar $ fromIntegral fileIdx / fromIntegral filesCount
 		case successInfo of
 			Right _ -> widgetSetSensitive (boundButton progressOpenTargetFolder) True
@@ -283,7 +284,7 @@ convertPictureImpl settings filename targetFilename = do
 	let targetFolder = fst $ splitFileName targetFilename
 	createDirectoryIfMissing True targetFolder
 
-	pixbufSave pbuf targetFilename "jpeg" [("quality", "95")]
+	pixbufSave pbuf targetFilename (T.pack "jpeg") [("quality", "95")]
 
 getTargetFileName :: FilePath -> FilePath -> FilePath
 getTargetFileName inputFilename targetFolder = intercalate [pathSeparator] [targetFolder, filename]
