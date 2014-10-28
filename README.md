@@ -2,6 +2,8 @@
 
 <img align="right" src="https://raw.github.com/wiki/emmanueltouzery/imprint/imprint-128.png" alt="app icon"/>
 
+[![Build Status](https://travis-ci.org/emmanueltouzery/imprint.png?branch=master)](https://travis-ci.org/emmanueltouzery/imprint)
+
 ![Main view detail](https://raw.github.com/wiki/emmanueltouzery/imprint/main_window.png)
 
 Imprint can add text labels on your pictures, like the date on which a picture was taken. But besides this, it can add many more types of data, like exposition time, ISO.. And you can format the date to your liking.
