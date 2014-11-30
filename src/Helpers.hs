@@ -26,7 +26,7 @@ __ = unsafePerformIO . getText
 -- http://stackoverflow.com/questions/17132514/
 myMakeLenses :: Name -> DecsQ
 myMakeLenses = makeLensesWith $ lensRules
-	& lensField .~ \_ name -> [TopName (mkName $ nameBase name ++ "L")]
+	& lensField .~ \_ _ name -> [TopName (mkName $ nameBase name ++ "L")]
 
 applyColor :: (Double->Double->Double->Double->a) -> (Double,Double,Double,Double) -> a
 applyColor f (r,g,b,a) = f r g b a
