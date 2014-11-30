@@ -1,7 +1,7 @@
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
 module SettingsDialog where
 
-import Graphics.UI.Gtk hiding (styleSet)
+import Graphics.UI.Gtk hiding (styleSet, rectangle)
 import Graphics.Rendering.Cairo hiding (width, height, x)
 import Data.IORef
 import Data.AppSettings (getSetting', setSetting, Conf, DefaultConfig(..))
