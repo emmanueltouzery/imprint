@@ -20,7 +20,7 @@ import System.FilePath.Windows (splitFileName, pathSeparator, takeDirectory, dro
 #else
 import System.FilePath.Posix (splitFileName, pathSeparator, takeDirectory, dropExtension)
 #endif
-import Control.Applicative ( (<$>), (*>) )
+import Control.Applicative ( (<$>), (*>), (<$) )
 
 import Settings
 import Helpers
@@ -51,25 +51,25 @@ parseDate :: GenParser Char st FormatElement
 parseDate = DateFormat <$> (string "%date{" *> manyTill anyChar (try $ char '}'))
 
 parseEscapedPercent :: GenParser Char st FormatElement
-parseEscapedPercent = string "%%" >> return (StringContents "%")
+parseEscapedPercent = StringContents "%" <$ string "%%"
 
 parseFormatItem :: GenParser Char st FormatElement
 parseFormatItem = do
 	string "%"
-	(try (string "file") >> return Filename)
-		<|> (try (string "folderhier") >> return Folderhierarchy)
-		<|> (try (string "folder") >> return Foldername)
-		<|> (try (string "expo_bias") >> return (ExifContents exposureBiasValue))
-		<|> (try (string "expo") >> return (ExifContents exposureTime))
-		<|> (try (string "aper") >> return (ExifContents fnumber))
-		<|> (try (string "iso") >> return (ExifContents isoSpeedRatings))
-		<|> (try (string "make") >> return (ExifContents make))
-		<|> (try (string "model") >> return (ExifContents model))
-		<|> (try (string "soft") >> return (ExifContents software))
-		<|> (try (string "copy") >> return (ExifContents copyright))
-		<|> (try (string "focal35") >> return (ExifContents focalLengthIn35mmFilm))
+	try (Filename <$ string "file")
+		<|> try (Folderhierarchy <$ string "folderhier")
+		<|> try (Foldername <$ string "folder")
+		<|> try (ExifContents exposureBiasValue <$ string "expo_bias")
+		<|> try (ExifContents exposureTime <$ string "expo")
+		<|> try (ExifContents fnumber <$ string "aper")
+		<|> try (ExifContents isoSpeedRatings <$ string "iso")
+		<|> try (ExifContents make <$ string "make")
+		<|> try (ExifContents model <$ string "model")
+		<|> try (ExifContents software <$ string "soft")
+		<|> try (ExifContents copyright <$ string "copy")
+		<|> try (ExifContents focalLengthIn35mmFilm <$ string "focal35")
 		<?> "known format item"
-	
+
 parseString :: GenParser Char st FormatElement
 parseString = StringContents <$> many1 (noneOf "%")
 
