@@ -2,7 +2,7 @@
 module SettingsDialog where
 
 import Graphics.UI.Gtk hiding (styleSet, rectangle)
-import Graphics.Rendering.Cairo hiding (width, height, x)
+import Graphics.Rendering.Cairo hiding (width, height, x, y)
 import Data.IORef
 import Data.AppSettings (getSetting', setSetting, Conf, DefaultConfig(..))
 import Control.Monad (liftM, when, void)
@@ -39,6 +39,8 @@ prepareSettingsDialog builder latestConfig = do
 	defaultSettingsButton <- builderGetObject builder castToButton "default_settings_button"
 	defaultSettingsButton `on` buttonActivated $ resetToDefaults displayItemsModel textStylesModel
 
+	displayItemPositionCombo <- builderGetObject builder castToComboBox "displayItemPositionCombo"
+
 	-- TODO turns out too small, workaround, forced height request of 30px
 	-- in the gtkbuilder file...
 	contentsCombo <- builderGetObject builder castToComboBox "contentscombo"
@@ -56,6 +58,9 @@ prepareSettingsDialog builder latestConfig = do
 	textLayout `layoutSetText` "2014-04-01"
 	imageLayout `on` draw $
 		drawImageLayout imageLayout aspectRatioCombo displayItemsModel textStylesModel textLayout ctxt
+
+	widgetAddEvents imageLayout [ButtonPressMask, ButtonReleaseMask]
+	imageLayout `on` buttonReleaseEvent $ handleImageLayoutClick imageLayout displayItemPositionCombo
 
 	textStylePreview <- builderGetObject builder castToDrawingArea "textstylepreview"
 
@@ -102,8 +107,6 @@ prepareSettingsDialog builder latestConfig = do
 		cTextStyle <- liftIO $ getDisplayItemTextStyle displayItemsModel textStylesModel
 		fontSize <- liftIO $ setFontSizeForWidget ctxt text textStylePreview cTextStyle
 		renderText text ctxt cTextStyle $ fromIntegral fontSize
-
-	displayItemPositionCombo <- builderGetObject builder castToComboBox "displayItemPositionCombo"
 
 	positionDeleteButton <- builderGetObject builder castToButton "positionDeleteButton"
 	positionDeleteButton `on` buttonActivated $
@@ -168,6 +171,26 @@ prepareSettingsDialog builder latestConfig = do
 	windowSetDefaultSize settingsDialog 600 500
 	return settingsDialog
 	--prepareTextStylePreview builder latestConfig
+
+handleImageLayoutClick :: DrawingArea -> ComboBox -> EventM EButton Bool
+handleImageLayoutClick widget displayItemPositionCombo = do
+	(x, y) <- eventCoordinates
+	liftIO $ do
+        	w <- fromIntegral <$> widgetGetAllocatedWidth widget
+        	h <- fromIntegral <$> widgetGetAllocatedHeight widget
+        	let isTop = y < h/4
+        	let isBottom = y > h*3/4
+        	let isLeft = x < w / 4
+        	let isCenter = x > w/2 - w/8 && x < w/2 + w/8
+        	let isRight = x > w * 3 / 4
+        	let comboSet = comboBoxSelectPosition displayItemPositionCombo
+        	when (isTop && isLeft) (comboSet TopLeft)
+        	when (isTop && isCenter) (comboSet TopCenter)
+        	when (isTop && isRight) (comboSet TopRight)
+        	when (isBottom && isLeft) (comboSet BottomLeft)
+        	when (isBottom && isCenter) (comboSet BottomCenter)
+        	when (isBottom && isRight) (comboSet BottomRight)
+	return True
 
 handlePositionDelete :: Dialog -> ListModel DisplayItem -> ComboBox -> IO ()
 handlePositionDelete settingsDialog displayItemsModel displayItemPositionCombo = do
