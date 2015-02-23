@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP #-}
 {-# OPTIONS_GHC -fno-warn-unused-do-bind #-}
-module FrameRenderer (renderFrame, renderText, parseFormat,
+module FrameRenderer (renderFrame, renderMissingItems, renderText, parseFormat,
 	FormatElement(..), ImageInfo(..), getTextToRender,
 	EnvironmentInfo(..)) where
 
@@ -9,7 +9,7 @@ import Graphics.Rendering.Cairo hiding (width, height, x, y)
 import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.List
-import Data.Maybe (fromMaybe)
+import Data.Maybe
 import Data.Time.Format (formatTime)
 import System.Locale (defaultTimeLocale)
 import Graphics.HsExif
@@ -125,6 +125,22 @@ renderFrame width height imageInfo text ctxt itemsStyles = do
 	liftIO $ layoutSetEllipsize text EllipsizeEnd
 	mapM_ (uncurry $ renderDisplayItem width height imageInfo text ctxt) itemsStyles
 
+renderMissingItems :: Int -> Int -> [(DisplayItem, TextStyle)] -> Render ()
+renderMissingItems width height itemsStyles = do
+	let missingPositions = filter hasNoPosition [minBound..maxBound]
+	mapM_ (renderPlaceHolder width height) missingPositions
+	where hasNoPosition pos = isNothing $ find ((==pos) . position . fst) itemsStyles
+
+renderPlaceHolder :: Int -> Int -> ItemPosition -> Render ()
+renderPlaceHolder width height pos = do
+	let rWidth = floor $ (fromIntegral width) * (0.1 :: Double)
+	let rHeight = floor $ (fromIntegral rWidth) * (0.2 :: Double)
+	let margin = floor $ fromIntegral width * (0.03 :: Double)
+	moveToRenderPos pos width height rWidth rHeight margin margin
+	roundedRect 0 0 0 (fromIntegral rWidth) (fromIntegral rHeight)
+	setSourceRGBA `applyColor` (1,0,0,1)
+	stroke
+
 renderDisplayItem :: Int -> Int -> ImageInfo -> PangoLayout -> PangoContext -> DisplayItem -> TextStyle -> Render ()
 renderDisplayItem width height imageInfo text ctxt displayItem textStyle = do
 	homeDir <- liftIO getHomeDirectory
@@ -140,20 +156,23 @@ renderDisplayItem width height imageInfo text ctxt displayItem textStyle = do
 	-- before already to get the right font metrics...
 	liftIO $ updateFontFromTextStyle ctxt text textStyle textSizePoints
 	(Rectangle _ _ rWidth rHeight) <- snd <$> liftIO (layoutGetPixelExtents text)
+	moveToRenderPos (position displayItem) width height rWidth rHeight marginX marginY
+	renderText text ctxt textStyle textSizePoints
+
+moveToRenderPos :: ItemPosition -> Int -> Int -> Int -> Int -> Int -> Int -> Render ()
+moveToRenderPos itemPos width height rWidth rHeight marginX marginY = do
 	let xLeft = fromIntegral marginX
 	let xCenter = fromIntegral $ (width `div` 2) - (rWidth `div` 2)
 	let xRight = fromIntegral $ width - rWidth - marginX
 	let yTop = fromIntegral marginY
 	let yBottom = fromIntegral $ height - rHeight - marginY
-	case position displayItem of
+	case itemPos of
 		TopLeft -> moveTo xLeft yTop
 		TopCenter -> moveTo xCenter yTop
 		TopRight -> moveTo xRight yTop
 		BottomLeft -> moveTo xLeft yBottom
 		BottomCenter -> moveTo xCenter yBottom
 		BottomRight -> moveTo xRight yBottom
-	renderText text ctxt textStyle textSizePoints
-	return ()
 
 renderText :: PangoLayout -> PangoContext -> TextStyle -> Double -> Render ()
 renderText text ctxt textStyle fontSize = do

@@ -31,7 +31,7 @@ prepareSettingsDialog builder latestConfig = do
 
 	settingsDialog <- builderGetObject builder castToDialog "main_settings_dialog"
 	imageLayout <- builderGetObject builder castToDrawingArea "image_layout"
-	
+
 	aspectRatioCombo <- builderGetObject builder castToComboBox "aspect_ratio_combo"
 	comboBoxSetActive aspectRatioCombo 0 -- needed on windows
 	aspectRatioCombo `on` changed $ widgetQueueDraw imageLayout
@@ -114,7 +114,7 @@ prepareSettingsDialog builder latestConfig = do
 	contentsAdvancedEdit <- builderGetObject builder castToButton "contentsAdvancedEdit"
 	contentsAdvancedEdit `on` buttonActivated $
 		getCurItem >>= showCustomContentsDialog settingsDialog builderHolder
-	
+
 	let showHideAdvancedEdit = do
 		idx <- comboBoxGetActive contentsCombo
 		-- is advanced picked in the contents combo?
@@ -173,7 +173,7 @@ handlePositionDelete :: Dialog -> ListModel DisplayItem -> ComboBox -> IO ()
 handlePositionDelete settingsDialog displayItemsModel displayItemPositionCombo = do
 	confirm <- dialogYesNo settingsDialog $ __ "Are you sure to remove the display item?"
 	when confirm $ do
-		itemToRemove <- fromJust <$> listModelGetCurrentItem displayItemsModel 
+		itemToRemove <- fromJust <$> listModelGetCurrentItem displayItemsModel
 		newCurItem <- find (/= itemToRemove) <$> readListModel displayItemsModel
 		case newCurItem of
 			Nothing -> displayError settingsDialog $ __ "Can't delete the last display item"
@@ -203,7 +203,7 @@ changeDisplayItemPosition parent displayItemPositionCombo displayItemsModel = do
 
 comboBoxGetPosition :: ComboBox -> IO ItemPosition
 comboBoxGetPosition combo = do
-	comboPosition <- comboBoxGetActive combo 
+	comboPosition <- comboBoxGetActive combo
 	case find ((==comboPosition) . fst) comboIndexes of
 		Nothing -> error $ "got index " ++ show comboPosition ++ " from the item position combo!?"
 		Just (_, pos) -> return pos
@@ -276,6 +276,7 @@ drawImageLayout drawingArea aspectRatioCombo displayItemsModel textStylesModel t
 
 	displayItemsStylesInfo <- liftIO $ getDisplayItemsStyles displayItemsModel textStylesModel
 	renderFrame (floor effectiveW) (floor effectiveH) fakeImageInfo text ctxt displayItemsStylesInfo
+	renderMissingItems (floor effectiveW) (floor effectiveH) displayItemsStylesInfo
 	restore
 	return ()
 
