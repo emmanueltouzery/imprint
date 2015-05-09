@@ -15,6 +15,7 @@ import System.Locale (defaultTimeLocale)
 import Graphics.HsExif
 import Text.ParserCombinators.Parsec
 import System.Directory (getHomeDirectory)
+import Control.Error
 #ifdef CABAL_OS_WINDOWS
 import System.FilePath.Windows (splitFileName, pathSeparator, takeDirectory, dropExtension)
 #else
@@ -34,9 +35,7 @@ data FormatElement = StringContents String
 	deriving (Show, Eq)
 
 parseFormat :: String -> Either String [FormatElement]
-parseFormat input = case parse parseFormatParsec "" input of
-	Left parseError -> Left $ show parseError
-	Right result -> Right result
+parseFormat input = fmapL show (parse parseFormatParsec "" input)
 
 parseFormatParsec :: GenParser Char st [FormatElement]
 parseFormatParsec = do

@@ -16,6 +16,7 @@ import Data.List
 import Control.Monad (when)
 import Language.Haskell.TH
 import Control.Lens hiding (set)
+import Data.Foldable
 
 import Text.I18N.GetText (getText)
 import System.IO.Unsafe (unsafePerformIO)
@@ -110,15 +111,8 @@ buttonBindCallback btnBinder cb = do
 whenM :: Monad m => m Bool -> m () -> m ()
 whenM test action = test >>= \t -> when t action
 
--- TODO move to the Data.Either implementation present in base 4.7.0
-isLeft :: Either a b -> Bool
-isLeft (Left _) = True
-isLeft _        = False
-
 whenIsJust :: (Monad m) => Maybe a -> (a -> m ()) -> m ()
-whenIsJust mA s = case mA of
-	Nothing -> return ()
-	Just x -> s x
+whenIsJust = forM_
 
 showDialog :: (DialogClass a, WindowClass b) => a -> b -> IO ()
 showDialog dialog parent = do

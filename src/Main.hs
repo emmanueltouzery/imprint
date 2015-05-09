@@ -10,6 +10,7 @@ import Data.IORef
 import Control.Monad (void, when)
 import Data.List
 import Data.Maybe (fromJust)
+import Data.Either
 import Data.AppSettings
 import Control.Concurrent (forkOS)
 import Text.Printf (printf)
@@ -51,7 +52,7 @@ minFontSize = 5
 main :: IO ()
 main = do
 #ifndef CABAL_OS_WINDOWS
-	setLocale LC_ALL (Just "") 
+	setLocale LC_ALL (Just "")
 	bindTextDomain __MESSAGE_CATALOG_DOMAIN__ (Just __MESSAGE_CATALOG_DIR__)
 	textDomain $ Just __MESSAGE_CATALOG_DOMAIN__
 #else
@@ -201,7 +202,7 @@ treeViewAddColumn treeView colName treeModel modelToStr = do
 expandFilenames :: [String] -> IO [String]
 expandFilenames [] = return []
 expandFilenames (x:xs) = do
-	isDir <- doesDirectoryExist x 
+	isDir <- doesDirectoryExist x
 	if not isDir
 		then (x:) <$> expandFilenames xs
 		else do
@@ -228,7 +229,7 @@ openFolder :: FilePath -> IO ()
 openFolder folderPath = if pathSeparator == '/'
 			then void (rawSystem "xdg-open" [folderPath]) -- linux
 			else void (runCommand $ "start \"\" \"" ++ folderPath ++ "\"") -- windows
-	
+
 
 -- Careful this is in another thread...
 convertPicture :: Conf -> String -> IORef Bool -> (Int -> Either ErrorInfo () -> IO ()) -> String -> Int -> IO ()

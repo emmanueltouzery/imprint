@@ -7,6 +7,7 @@ import Data.List
 import Control.Applicative
 import Graphics.UI.Gtk
 import Control.Lens hiding (set)
+import Data.Either
 
 import SettingsWindowData
 import GtkViewModel
@@ -71,7 +72,7 @@ showCustomContentsDialog parent builderHolder displayItemModel = do
 	parseResultLabel <- builderGetObject builder castToLabel "parseResultLabel"
 	customContentsEntry `on` editableChanged $ do
 		text <- entryGetText customContentsEntry
-		let isParseOk = not $ isLeft $ parseFormat text 
+		let isParseOk = not $ isLeft $ parseFormat text
 		labelSetMarkup parseResultLabel $ if isParseOk
 			then getTextToRender (defaultDisplayItem {itemContents = text}) fakeImageInfo defaultEnvironmentInfo
 			else __ "<span color='red'><b>Incorrect syntax</b></span>"
@@ -79,10 +80,10 @@ showCustomContentsDialog parent builderHolder displayItemModel = do
 	entrySetText customContentsEntry curContents
 
 	completion <- entryCompletionNew
-	let completionData = fmap (uncurry $ CompletionRecord NormalCompletion) completionComboData 
-				++ [CompletionRecord NormalCompletion (__ "% sign") "%%"] 
+	let completionData = fmap (uncurry $ CompletionRecord NormalCompletion) completionComboData
+				++ [CompletionRecord NormalCompletion (__ "% sign") "%%"]
 				++ fmap (uncurry $ CompletionRecord DateCompletion) completionDataDate
-				++ [CompletionRecord DateCompletion (__ "% sign") "%%"] 
+				++ [CompletionRecord DateCompletion (__ "% sign") "%%"]
 	completionStore <- listStoreNew completionData
 	entryCompletionSetModel completion $ Just completionStore
 	cellValue <- cellRendererTextNew
@@ -135,5 +136,5 @@ customContentsCompletionCb completionModel entry _ iter = do
 		Nothing -> return False
 		Just fromPercent | inDateContext ->
 			return $ isDateRecord candidate && fromPercent `isPrefixOf` complRecordValue candidate
-		Just fromPercent -> 
+		Just fromPercent ->
 			return $ not (isDateRecord candidate) && fromPercent `isPrefixOf` complRecordValue candidate

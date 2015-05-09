@@ -3,7 +3,6 @@
 module Settings where
 
 import Data.AppSettings as AppSettings
-import Control.Lens hiding (Setting, setting)
 import Helpers (myMakeLenses)
 
 appName :: String
