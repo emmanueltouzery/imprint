@@ -155,7 +155,7 @@ processDrop builderHolder latestConfig mainWindow uris = do
 	let targetFolder = getTargetFolder expandedFilenames
 	buttonBindCallback progressOpenTargetFolder $ openFolder targetFolder
 
-	let pictureConvertCb = \fileIdx successInfo -> postGUIAsync $ do
+	let pictureConvertCb fileIdx successInfo = postGUIAsync $ do
 		labelSetText progressLabel $ T.pack $ printf "Processing image %d/%d" fileIdx filesCount
 		progressBarSetFraction progressBar $ fromIntegral fileIdx / fromIntegral filesCount
 		case successInfo of
