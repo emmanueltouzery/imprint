@@ -27,7 +27,7 @@ __ = unsafePerformIO . getText
 -- http://stackoverflow.com/questions/17132514/
 myMakeLenses :: Name -> DecsQ
 myMakeLenses = makeLensesWith $ lensRules
-	& lensField .~ \_ _ name -> [TopName (mkName $ nameBase name ++ "L")]
+    & lensField .~ \_ _ name -> [TopName (mkName $ nameBase name ++ "L")]
 
 applyColor :: (Double->Double->Double->Double->a) -> (Double,Double,Double,Double) -> a
 applyColor f (r,g,b,a) = f r g b a
@@ -40,39 +40,39 @@ convertChannel x = fromIntegral (round (x*65535) :: Integer)
 
 readGtkColorAlpha :: Color -> Word16 -> (Double, Double, Double, Double)
 readGtkColorAlpha (Color r g b) alpha = (fromGtkChannel r, fromGtkChannel g, fromGtkChannel b, fromGtkChannel alpha)
-	where fromGtkChannel x = fromIntegral x/65536
+    where fromGtkChannel x = fromIntegral x/65536
 
 buttonSetColor :: ColorButtonClass self => self -> (Double, Double, Double, Double) -> IO ()
 buttonSetColor btn color@(_, _, _, a) = do
-	colorButtonSetColor btn $ getGtkColorNoAlpha color
-	colorButtonSetAlpha btn $ convertChannel a
+    colorButtonSetColor btn $ getGtkColorNoAlpha color
+    colorButtonSetAlpha btn $ convertChannel a
 
 displayError :: WindowClass a => a -> String -> IO ()
 displayError parent msg = do
-	dialog <- messageDialogNew (Just $ toWindow parent) [DialogModal] MessageError ButtonsOk msg
-	dialogRun dialog >> widgetDestroy dialog
+    dialog <- messageDialogNew (Just $ toWindow parent) [DialogModal] MessageError ButtonsOk msg
+    dialogRun dialog >> widgetDestroy dialog
 
 dialogYesNo :: WindowClass a => a -> String -> IO Bool
 dialogYesNo parent msg = do
-	dialog <- messageDialogNew (Just $ toWindow parent) [DialogModal] MessageWarning ButtonsYesNo msg
-	resp <- dialogRun dialog
-	widgetDestroy dialog
-	return $ resp == ResponseYes
+    dialog <- messageDialogNew (Just $ toWindow parent) [DialogModal] MessageWarning ButtonsYesNo msg
+    resp <- dialogRun dialog
+    widgetDestroy dialog
+    return $ resp == ResponseYes
 
 data BuilderHolder = BuilderHolder
-	{
-		boundBuilder :: Builder,
-		buttonBinders :: IORef (Map String ButtonBinder)
-	}
+    {
+        boundBuilder :: Builder,
+        buttonBinders :: IORef (Map String ButtonBinder)
+    }
 
 getBuilderHolder :: Builder -> IO BuilderHolder
 getBuilderHolder builder = do
-	binders <- newIORef $ Map.fromList []
-	return BuilderHolder
-		{
-			boundBuilder = builder,
-			buttonBinders = binders
-		}
+    binders <- newIORef $ Map.fromList []
+    return BuilderHolder
+        {
+            boundBuilder = builder,
+            buttonBinders = binders
+        }
 
 -- The problem this solves is that I have dialogs
 -- that I show and hide and show again, because
@@ -84,29 +84,29 @@ getBuilderHolder builder = do
 -- connection ID, that I must store...
 builderHolderGetButtonBinder :: BuilderHolder -> String -> IO ButtonBinder
 builderHolderGetButtonBinder builderHolder btnName = do
-	bindersV <- readIORef $ buttonBinders builderHolder
-	case Map.lookup btnName bindersV of
-		Just btnBinder -> return btnBinder
-		Nothing -> do
-			btn <- builderGetObject (boundBuilder builderHolder) castToButton btnName
-			cb <- newIORef Nothing
-			let binder = ButtonBinder btn cb
-			modifyIORef (buttonBinders builderHolder)
-				$ const $ Map.insert btnName binder bindersV
-			return binder
+    bindersV <- readIORef $ buttonBinders builderHolder
+    case Map.lookup btnName bindersV of
+        Just btnBinder -> return btnBinder
+        Nothing -> do
+            btn <- builderGetObject (boundBuilder builderHolder) castToButton btnName
+            cb <- newIORef Nothing
+            let binder = ButtonBinder btn cb
+            modifyIORef (buttonBinders builderHolder)
+                $ const $ Map.insert btnName binder bindersV
+            return binder
 
 data ButtonBinder = ButtonBinder
-	{
-		boundButton :: Button,
-		currentCbId :: IORef (Maybe (ConnectId Button))
-	}
+    {
+        boundButton :: Button,
+        currentCbId :: IORef (Maybe (ConnectId Button))
+    }
 
 buttonBindCallback :: ButtonBinder -> IO () -> IO ()
 buttonBindCallback btnBinder cb = do
-	cbId <- readIORef $ currentCbId btnBinder
-	whenIsJust cbId signalDisconnect
-	newCbId <- boundButton btnBinder `on` buttonActivated $ cb
-	modifyIORef (currentCbId btnBinder) $ const (Just newCbId)
+    cbId <- readIORef $ currentCbId btnBinder
+    whenIsJust cbId signalDisconnect
+    newCbId <- boundButton btnBinder `on` buttonActivated $ cb
+    modifyIORef (currentCbId btnBinder) $ const (Just newCbId)
 
 whenM :: Monad m => m Bool -> m () -> m ()
 whenM test action = test >>= \t -> when t action
@@ -116,8 +116,8 @@ whenIsJust = forM_
 
 showDialog :: (DialogClass a, WindowClass b) => a -> b -> IO ()
 showDialog dialog parent = do
-	set dialog [windowTransientFor := parent]
-	dialogRun dialog >> widgetHide dialog
+    set dialog [windowTransientFor := parent]
+    dialogRun dialog >> widgetHide dialog
 
 -- the user may have dropped a whole file hierarchy like
 -- Pictures, Pictures/2014, Pictures/2013 and so on.
@@ -135,17 +135,17 @@ showDialog dialog parent = do
 -- are the root folder. Then I take the parent.
 getTargetFolder :: [String] -> String
 getTargetFolder files = rootFolder ++ "/imprint"
-	where
-		folders = nub $ map (fst . splitFileName) files
-		pathDepths = map (length . splitPath) folders
-		foldersWithpathDepth = zip folders pathDepths
-		foldersWithDepthByDepth = sortBy (compare `F.on` snd) foldersWithpathDepth
-		smallestDepth = snd $ head foldersWithDepthByDepth
-		isSeveralRootFolders = not $ null $ takeWhile ((==smallestDepth) . snd) $
-			tail foldersWithDepthByDepth
-		-- takeDirectory to remove the trailing /
-		folderSmallestDepth = takeDirectory $ fst $ head foldersWithDepthByDepth
-		rootFolder = if isSeveralRootFolders
-			-- now takeDirectory goes to the parent folder.
-			then takeDirectory folderSmallestDepth
-			else folderSmallestDepth
+    where
+        folders = nub $ map (fst . splitFileName) files
+        pathDepths = map (length . splitPath) folders
+        foldersWithpathDepth = zip folders pathDepths
+        foldersWithDepthByDepth = sortBy (compare `F.on` snd) foldersWithpathDepth
+        smallestDepth = snd $ head foldersWithDepthByDepth
+        isSeveralRootFolders = not $ null $ takeWhile ((==smallestDepth) . snd) $
+            tail foldersWithDepthByDepth
+        -- takeDirectory to remove the trailing /
+        folderSmallestDepth = takeDirectory $ fst $ head foldersWithDepthByDepth
+        rootFolder = if isSeveralRootFolders
+            -- now takeDirectory goes to the parent folder.
+            then takeDirectory folderSmallestDepth
+            else folderSmallestDepth

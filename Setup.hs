@@ -11,12 +11,12 @@ main = defaultMain
 
 import Distribution.Simple.I18N.GetText
 main = do
-	-- manage translations
-	gettextDefaultMain
-	-- install desktop file and icon
-	rawSystem "xdg-icon-resource" ["install", "--size", "128", "imprint-128.png", "graphics-imprint"]
-	rawSystem "xdg-desktop-menu" ["install", "graphics-imprint.desktop"]
-	return ()
-	
+    -- manage translations
+    gettextDefaultMain
+    -- install desktop file and icon
+    rawSystem "xdg-icon-resource" ["install", "--size", "128", "imprint-128.png", "graphics-imprint"]
+    rawSystem "xdg-desktop-menu" ["install", "graphics-imprint.desktop"]
+    return ()
+
 
 #endif
