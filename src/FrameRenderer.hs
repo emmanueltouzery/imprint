@@ -10,8 +10,7 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.List
 import Data.Maybe
-import Data.Time.Format (formatTime)
-import System.Locale (defaultTimeLocale)
+import Data.Time.Format
 import Graphics.HsExif
 import Text.ParserCombinators.Parsec
 import System.Directory (getHomeDirectory)

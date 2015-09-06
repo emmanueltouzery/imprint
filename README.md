@@ -22,6 +22,7 @@ Besides English, Imprint is also translated in French and Slovenian languages.
 
 To install the application on linux, install the haskell platform, get this git repository and run:
 
+    cabal install hgettext
 	cabal install
 
 The application will register in the menus on linux, however for it to actually run, you must add ~/.cabal/bin to your path.
