@@ -6,4 +6,5 @@ dist
 *.dll
 *.def
 .cabal-sandbox/
+.stack-work/
 cabal.sandbox.config

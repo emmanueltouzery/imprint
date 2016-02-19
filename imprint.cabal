@@ -52,6 +52,15 @@ executable imprint
                        text,
                        template-haskell,
                        errors
+  other-modules:       CustomContentsDialog
+                       FrameRenderer
+                       GtkViewModel
+                       Helpers
+                       Paths_imprint
+                       Settings
+                       SettingsDialog
+                       SettingsWindowData
+                       TextStylesSettings
 
   if !os(windows)
     build-depends:     setlocale

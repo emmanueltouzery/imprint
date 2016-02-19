@@ -20,13 +20,12 @@ And it is possible to place several display items on a single picture, top-left,
 
 Besides English, Imprint is also translated in French and Slovenian languages.
 
-To install the application on linux, install the haskell platform, get this git repository and run:
+To install the application on linux, [install stack][], get this git repository and run:
 
-    cabal install hgettext
-	cabal install
+    sh install.sh
 
-The application will register in the menus on linux, however for it to actually run, you must add ~/.cabal/bin to your path.
+The application will register in the menus on linux, however for it to actually run, you must add `~/.local/bin` to your path.
 
 You can download a windows build in the release section.
 
-[a gtk2hs bug]: https://github.com/gtk2hs/gtk2hs/issues/33
+[install stack]: http://docs.haskellstack.org/en/stable/README.html#how-to-install
